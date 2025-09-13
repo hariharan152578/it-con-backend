@@ -162,28 +162,198 @@ const bufferToDataUri = (file) => `data:${file.mimetype};base64,${file.buffer.to
 // ----------------------------
 // Submit Registration + Abstract
 // ----------------------------
+// export const submitRegistration = asyncHandler(async (req, res) => {
+//   const userId = req.user?.id;
+//   if (!userId) return res.status(401).json({ message: "Not authorized" });
+
+//   const { participants, address, country, pincode, track, abstractTitle, abstractContent, abstractExpression } = req.body;
+
+//   const user = await User.findById(userId);
+//   if (!user) return res.status(404).json({ message: "User not found" });
+
+//   const registration = await Registration.findOneAndUpdate(
+//     { userId },
+//     { uniqueId: user.userId, participants, address, country, pincode, track, abstractTitle, abstractContent, abstractExpression },
+//     { new: true, upsert: true, runValidators: true }
+//   );
+
+//   await AbstractStatus.findOneAndUpdate(
+//     { userId },
+//     { abstractSubmitted: true, abstractStatus: "pending" },
+//     { new: true, upsert: true }
+//   );
+
+//   res.status(201).json({ message: "Registration & abstract submitted. Await admin approval.", registration });
+// });
+
+// export const submitRegistration = asyncHandler(async (req, res) => {
+//   const userId = req.user?.id;
+//   if (!userId) return res.status(401).json({ message: "Not authorized" });
+
+//   const { participants, address, country, pincode, track, abstractTitle, abstractContent, abstractExpression } = req.body;
+
+//   const user = await User.findById(userId);
+//   if (!user) return res.status(404).json({ message: "User not found" });
+
+//   const registration = await Registration.findOneAndUpdate(
+//     { userId },
+//     { uniqueId: user.userId, participants, address, country, pincode, track, abstractTitle, abstractContent, abstractExpression },
+//     { new: true, upsert: true, runValidators: true }
+//   );
+
+//   await AbstractStatus.findOneAndUpdate(
+//     { userId },
+//     { abstractSubmitted: true, abstractStatus: "pending" },
+//     { new: true, upsert: true }
+//   );
+
+//   res.status(201).json({ message: "Registration & abstract submitted. Await admin approval.", registration });
+// });
+
+// export const submitRegistration = asyncHandler(async (req, res) => {
+//   const userId = req.user?.id;
+//   if (!userId) return res.status(401).json({ message: "Not authorized" });
+
+//   const {
+//     participants,
+//     address,
+//     country,
+//     pincode,
+//     track,
+//     abstractTitle,
+//     abstractContent,
+//     abstractExpression,
+//     presentationMode   
+//   } = req.body;
+
+//   const user = await User.findById(userId);
+//   if (!user) return res.status(404).json({ message: "User not found" });
+
+//   // Validate participants array
+//   if (!participants || !Array.isArray(participants) || participants.length === 0) {
+//     return res.status(400).json({ message: "Participants are required" });
+//   }
+
+//   for (let i = 0; i < participants.length; i++) {
+//     const p = participants[i];
+//     if (!p.name || !p.designation || !p.organisation || !p.email || !p.phone || !p.gender) {
+//       return res.status(400).json({
+//         message: `Participant ${i + 1} is missing required fields (name, designation, organisation, email, phone, gender)`
+//       });
+//     }
+//     // Optional: validate gender value
+//     if (!["Male", "Female", "Other"].includes(p.gender)) {
+//       return res.status(400).json({ message: `Participant ${i + 1} has invalid gender value` });
+//     }
+//   }
+//   if (!["Online", "Offline"].includes(presentationMode)) {
+//     return res.status(400).json({ message: "Presentation mode must be 'Online' or 'Offline'" });
+//   }
+//   const registration = await Registration.findOneAndUpdate(
+//     { userId },
+//     {
+//       uniqueId: user.userId,
+//       participants,
+//       address,
+//       country,
+//       pincode,
+//       track,
+//       abstractTitle,
+//       abstractContent,
+//       abstractExpression,
+//       presentationMode
+//     },
+//     { new: true, upsert: true, runValidators: true }
+//   );
+
+//   await AbstractStatus.findOneAndUpdate(
+//     { userId },
+//     { abstractSubmitted: true, abstractStatus: "pending" },
+//     { new: true, upsert: true }
+//   );
+
+//   res.status(201).json({
+//     message: "Registration & abstract submitted. Await admin approval.",
+//     registration
+//   });
+// });
+
+
+// import asyncHandler from "express-async-handler";
+// import User from "../models/userModel.js";
+// import Registration from "../models/registerModel.js";
+// import AbstractStatus from "../models/abstractStatusModel.js";
+
 export const submitRegistration = asyncHandler(async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ message: "Not authorized" });
 
-  const { participants, address, country, pincode, track, abstractTitle, abstractContent, abstractExpression } = req.body;
+  const {
+    participants,
+    address,
+    country,
+    pincode,
+    track,
+    abstractTitle,
+    abstractContent,
+    abstractExpression,
+    presentationMode   
+  } = req.body;
 
   const user = await User.findById(userId);
   if (!user) return res.status(404).json({ message: "User not found" });
 
+  // ✅ Validate participants
+  if (!participants || !Array.isArray(participants) || participants.length === 0) {
+    return res.status(400).json({ message: "Participants are required" });
+  }
+
+  for (let i = 0; i < participants.length; i++) {
+    const p = participants[i];
+    if (!p.name || !p.designation || !p.organisation || !p.email || !p.phone || !p.gender) {
+      return res.status(400).json({
+        message: `Participant ${i + 1} is missing required fields (name, designation, organisation, email, phone, gender)`
+      });
+    }
+    if (!["Male", "Female", "Other"].includes(p.gender)) {
+      return res.status(400).json({ message: `Participant ${i + 1} has invalid gender value` });
+    }
+  }
+
+  // ✅ Validate presentation mode
+  if (!["Online", "Offline"].includes(presentationMode)) {
+    return res.status(400).json({ message: "Presentation mode must be 'Online' or 'Offline'" });
+  }
+
+  // ✅ Save or update registration (no payment fields touched)
   const registration = await Registration.findOneAndUpdate(
     { userId },
-    { uniqueId: user.userId, participants, address, country, pincode, track, abstractTitle, abstractContent, abstractExpression },
+    {
+      uniqueId: user.userId,
+      participants,
+      address,
+      country,
+      pincode,
+      track,
+      abstractTitle,
+      abstractContent,
+      abstractExpression,
+      presentationMode
+    },
     { new: true, upsert: true, runValidators: true }
   );
 
+  // ✅ Update workflow status
   await AbstractStatus.findOneAndUpdate(
     { userId },
     { abstractSubmitted: true, abstractStatus: "pending" },
     { new: true, upsert: true }
   );
 
-  res.status(201).json({ message: "Registration & abstract submitted. Await admin approval.", registration });
+  res.status(201).json({
+    message: "Registration & abstract submitted. Await admin approval.",
+    registration
+  });
 });
 
 // ----------------------------

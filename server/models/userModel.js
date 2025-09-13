@@ -111,6 +111,7 @@ const userSchema = mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  mobileno: { type: String, required: true },
   userId: { type: String, unique: true, default: generateUserId },
   abstractStatus: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
   finalPaperStatus: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },

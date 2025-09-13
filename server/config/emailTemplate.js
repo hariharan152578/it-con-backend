@@ -154,6 +154,7 @@ export const emailTemplate = (title, message, userName, userEmail, userId, userA
         <b>User Name:</b> ${userName}<br/>
         <b>User Email:</b> ${userEmail}<br/>
         <b>User ID:</b> ${userId}<br/>
+        <b>Group:</b> <a href="https://chat.whatsapp.com/FoFsX2AJZjSIxUK98pqJei?mode=ems_wa_c">Join WhatsApp Group</a>
       </p>
     `;
   }
@@ -251,16 +252,16 @@ export const emailTemplate = (title, message, userName, userEmail, userId, userA
                         </p>
                         <div style="margin: 15px 0;">
                           <a href="https://www.linkedin.com/company/ksrce?originalSubdomain=in" target="_blank" style="margin: 0 10px;">
-                            <img src="https://i.imgur.com/uXmR0pL.png" alt="LinkedIn" width="36" style="display:inline-block; vertical-align:middle;">
+                            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACUCAMAAAAj+tKkAAAAY1BMVEUAfrv///8AdLYAebkAfLqCsdQAd7ifwt2ArtL0+fxUksUAbbPi7fWpx+A8icDn8fdtps6VuNjU4e7C2OlBkcRGjcKcvNrY5/GYvttfnsu20OWJtdYAabIphL5ooczL3+1TmMjG8NevAAADoElEQVR4nO2ca7OiMAyGe6Na5CaXg8IR+f+/ckFd98g2rAWnZGfyfu6UZ0KTpm0mjHNeMMUQSrFigGOcm0RuzWKXTMwNMBBbk0ASwQgYIbXfKBkNgEfMgEfO0gSlh9ylkpTlaFfgKJGzHW7AHcsQL8FhEWasRLwEh0VYbk1AIv1bahTOfGeU1JcqDMNECZThSIquuabGmKj4Kg/orKh0F/GnTFHprYleJZOCv+qkMBlRspRP1Wg8hLL8m4/zK5q/rGRk4eN8h4VQxFY+zjsc4Ub2BgCMcOSPGjIg5z0GE6rK5iEPP8FgQtmBfDy9IAg1oIsMMhjc5HCFAXmLINIc6hnALwyA9iiNCHDOgkcEgKKZAdwjAJR7mC/FcJJWIQyIYq+7377a1WIAZLqF+AyOrFppKNCcELjIKFnZ+a5bgz2lj1ZARC8CwkJoSjx8w3bSTrPqOkSyAB+S1WtSEzNM9hulDufm4c0mjy8CRYB5ldZVt29PbdajxBullNRaS6R0JBLJm4ZYIA43CYEuJAxwUvVtU9R1nRdx2ysp10OO0c+mycTKPurHnqgE6+LJKTFt9uHKZwPZt4FN7euRSZXWYe3zCkwJcaxtV3lpcf5egyh29oSV719m1YF9VPw4uEh1gi4ah+SoW/GjPwMouhzEG9Uki09gnwBUc5dkd6Xd0hzkA4DyMm++u4KFC3E9oFRzN1B/dFr2l1cDyuo9vqWEqwHftN9tyiUnnbWA33N3tBOZcIGjrATcfb3PNwTEg3fAAn7GsE7qvgxXAjoqci8g8wu4oATPM2DqvCt7BuSZa6jxDZi7OrJvQOPqJr4BeeD4j70DxhsCmjSF0+rfyh1feT8G2ATdue/PXQs/bNyUVlsARtlwwJNjdZqU+tLM2rHfADBWPxN6dcjmdmjHYtpPAGbTQ7QGa0m4c976AUBLiiJ6eHjjG7CxxY2Zd97CM6D9TW+m3sUxa10NCDyKwiaM/AJCe6s8IwFsoKDxDRaF+QUEi2vAkhy/gAYsQQOfyv0CRuDE4CL0C1iDQQ2s1/ALeAW/pirAS/wCwvsWekCWAHuJX8CYAAmQAAmQAAmQAAmQAAmQAAmQAAmQAAmQAAmQAAmQAAmQAAnwvwU8cWPTFHBvHcZnOsolkXVi41gSoJLQrkkF08U+aq6WDZjYsfLo3s3KpreGLZnZjY9E8iYMbR1gqRJ/i0n0TTrRtzlF3ygWfatd/M2K0bd7xt8wG3fL8V8O4E9US6xKJAAAAABJRU5ErkJggg==" alt="LinkedIn" width="36" style="display:inline-block; vertical-align:middle;">
                           </a>
                           <a href="https://wa.me/918870295336" target="_blank" style="margin: 0 10px;">
-                            <img src="https://i.imgur.com/bK4u1Jv.png" alt="WhatsApp" width="36" style="display:inline-block; vertical-align:middle;">
+                            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-jy74DqQgjct3lvMoc5kKvKBoze3zt4Haiw&s" alt="WhatsApp" width="36" style="display:inline-block; vertical-align:middle;">
                           </a>
                           <a href="mailto:ksritconference@gmail.com" style="margin: 0 10px;">
-                            <img src="https://i.imgur.com/gK61wUe.png" alt="Email" width="36" style="display:inline-block; vertical-align:middle;">
+                            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSeeceiZtze55yNLLKmme9KuPcPqt9TXSyr5w&s" alt="Email" width="36" style="display:inline-block; vertical-align:middle;">
                           </a>
                           <a href="https://ksrce.ac.in/" style="margin: 0 10px;">
-                            <img src="https://i.imgur.com/C53mH7J.png" alt="Website" width="36" style="display:inline-block; vertical-align:middle;">
+                            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSEHfmd0qwHhVjUHnObfu-1clz_qsPTDSkCmA&s" alt="Website" width="36" style="display:inline-block; vertical-align:middle;">
                           </a>
                         </div>
                         <p style="margin-top: 15px; font-size: 12px; color: #aaaaaa;">

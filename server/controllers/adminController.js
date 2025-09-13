@@ -176,16 +176,98 @@ export const loginAdmin = asyncHandler(async (req, res) => {
 // ----------------------------
 export const getAllUsers = asyncHandler(async (req, res) => {
   const users = await User.find().select("-password");
-  res.json(users);
+
+  // Use Promise.all to fetch related data for each user
+  const userData = await Promise.all(
+    users.map(async (user) => {
+      const registration = await Registration.findOne({ userId: user._id });
+      const abstractStatus = await AbstractStatus.findOne({ userId: user._id });
+
+      return {
+        // 🔹 User basic details
+        _id: user._id,
+        userId: user.userId,
+        name: user.name,
+        email: user.email,
+        mobileno: user.mobileno,
+
+        // 🔹 Registration details (null if not submitted yet)
+        abstractContent: registration ? registration.abstractContent : null,
+        abstractExpression: registration ? registration.abstractExpression : null,
+        abstractTitle: registration ? registration.abstractTitle : null,
+        address: registration ? registration.address : null,
+        country: registration ? registration.country : null,
+        currency: registration ? registration.currency : "INR",
+        participants: registration ? registration.participants : [],
+        pincode: registration ? registration.pincode : null,
+        track: registration ? registration.track : null,
+        presentationMode: registration ? registration.presentationMode : null,
+
+        // 🔹 Workflow status
+        abstractStatus: abstractStatus ? abstractStatus.abstractStatus : "pending",
+        finalPaperStatus: abstractStatus ? abstractStatus.finalPaperStatus : "pending",
+
+        // 🔹 Payment status
+        paymentStatus: registration ? registration.paymentStatus : "unpaid",
+        paymentDate: registration ? registration.paymentDate : null,
+        amountPaid: registration ? registration.amountPaid : 0,
+      };
+    })
+  );
+
+  res.json(userData);
 });
 
 // ----------------------------
 // Get user by ID
 // ----------------------------
+// export const getUserById = asyncHandler(async (req, res) => {
+//   const user = await User.findById(req.params.id).select("-password");
+//   if (!user) return res.status(404).json({ message: "User not found" });
+
+//   res.json(user);
+// });
+
 export const getUserById = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id).select("-password");
   if (!user) return res.status(404).json({ message: "User not found" });
-  res.json(user);
+
+  // ✅ Fetch registration details
+  const registration = await Registration.findOne({ userId: user._id });
+
+  // ✅ Fetch abstract/final paper workflow status
+  const abstractStatus = await AbstractStatus.findOne({ userId: user._id });
+
+  res.json({
+    // 🔹 User basic details
+    _id: user._id,
+    userId: user.userId,
+    name: user.name,
+    email: user.email,
+    mobileno: user.mobileno,
+
+    // 🔹 Registration details (null if not submitted yet)
+    abstractContent:registration.abstractContent,
+    abstractExpression:registration.abstractExpression,
+    abstractTitle:registration.abstractTitle,
+    address:registration.address,
+    country:registration.country,
+    currency:registration.currency,
+    participants:registration.participants,
+    pincode:registration.pincode,
+    track:registration.track,
+    presentationMode:registration.presentationMode,
+
+
+    // 🔹 Workflow status
+    abstractStatus: abstractStatus ? abstractStatus.abstractStatus : "pending",
+    finalPaperStatus: abstractStatus ? abstractStatus.finalPaperStatus : "pending",
+
+    // 🔹 Payment status (from registration, fallback if not present)
+    paymentStatus: registration ? registration.paymentStatus : "unpaid",
+    paymentDate: registration ? registration.paymentDate : null,
+    amountPaid: registration ? registration.amountPaid : 0,
+  });
 });
 
 // ----------------------------
@@ -484,4 +566,9 @@ if(user?.email){
 
   const updatedStatus = await status.save();
   res.json(updatedStatus);
+});
+
+export const logoutAdmin = asyncHandler(async (req, res) => {
+  // Since we are using JWT stateless auth, just tell frontend to clear token
+  res.status(200).json({ message: "Admin logged out successfully" });
 });

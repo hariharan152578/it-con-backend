@@ -82,15 +82,18 @@ import AbstractStatus from "../models/abstractStatusModel.js";
 import { generateToken } from "../middleware/authMiddleware.js";
 import { sendEmail } from "../config/email.js";
 import { emailTemplate } from "../config/emailTemplate.js";
+import Registration from "../models/registerModel.js"; // Make sure to import your Registration model
 // ----------------------------
 // Register User
 // ----------------------------
 export const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password,mobileno } = req.body;
   const emailExists = await User.findOne({ email });
+  const mobileExists = await User.findOne({ mobileno})
   if (emailExists) return res.status(400).json({ message: "Email already exists" });
-
-  const user = await User.create({ name, email, password });
+  if (mobileExists) return res.status(400).json({ message: "Mobile number already exists" });
+  const user = await User.create({ name, email, password, mobileno});
+  if (!user) return res.status(400).json({ message: "Invalid user data" });
   if (user) {
     
     // Send email with UserID 
@@ -146,26 +149,29 @@ await sendEmail({
     user.userId
   ),
 });
-
+}
     res.status(201).json({
       _id: user._id,
       userId: user.userId,
       name: user.name,
       email: user.email,
-      token: generateToken(user._id),
+      mobileno:user.mobileno
     });
-  } else {
-    res.status(400).json({ message: "Invalid user data" });
-  }
+  
 });
 
 // ----------------------------
 // Login User
 // ----------------------------
 export const loginUser = asyncHandler(async (req, res) => {
-  const { login, password } = req.body;
-  const user = await User.findOne({ $or: [{ email: login }, { userId: login }] });
-
+  const { username, password } = req.body;
+  const user = await User.findOne({
+    $or: [
+      { email: username },
+      { mobileno: username },
+      { userId: username }
+    ]
+  });
   if (!user) return res.status(400).json({ message: "Invalid email/userId" });
   if (!(await user.matchPassword(password))) return res.status(401).json({ message: "Invalid password" });
 
@@ -174,6 +180,7 @@ export const loginUser = asyncHandler(async (req, res) => {
     userId: user.userId,
     name: user.name,
     email: user.email,
+    mobileno: user.mobileno,
     token: generateToken(user._id),
   });
 });
@@ -181,22 +188,50 @@ export const loginUser = asyncHandler(async (req, res) => {
 // ----------------------------
 // Get Profile (Me)
 // ----------------------------
+// export const getMe = asyncHandler(async (req, res) => {
+//   const user = await User.findById(req.user.id).select("-password");
+//   if (!user) return res.status(404).json({ message: "User not found" });
+
+//   const abstractStatus = await AbstractStatus.findOne({ userId: user._id });
+
+//   res.json({
+//     _id: user._id,
+//     userId: user.userId,
+//     name: user.name,
+//     email: user.email,
+//     mobileno: user.mobileno,
+//     abstractStatus: abstractStatus ? abstractStatus.abstractStatus : "pending",
+//     finalPaperStatus: abstractStatus ? abstractStatus.finalPaperStatus : "pending",
+//     paymentStatus: abstractStatus ? abstractStatus.paymentStatus : "pending",
+//   });
+// });
+
+
 export const getMe = asyncHandler(async (req, res) => {
+  // Fetch user
   const user = await User.findById(req.user.id).select("-password");
   if (!user) return res.status(404).json({ message: "User not found" });
 
+  // Fetch abstract & final paper status
   const abstractStatus = await AbstractStatus.findOne({ userId: user._id });
+
+  // Fetch registration/participants data
+  const registration = await Registration.findOne({ userId: user._id });
 
   res.json({
     _id: user._id,
     userId: user.userId,
     name: user.name,
     email: user.email,
+    mobileno: user.mobileno,
     abstractStatus: abstractStatus ? abstractStatus.abstractStatus : "pending",
     finalPaperStatus: abstractStatus ? abstractStatus.finalPaperStatus : "pending",
     paymentStatus: abstractStatus ? abstractStatus.paymentStatus : "pending",
+    participants: registration ? registration.participants : [], // Include participants if available
+    presentationMode: registration ? registration.presentationMode : "Not specified" // Include presentation mode if available
   });
 });
+
 
 // ----------------------------
 // Logout
