@@ -65,7 +65,7 @@ const __dirname = path.dirname(__filename);
 // Middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN?.split(",") || ["http://localhost:5173"],
+    origin: process.env.CLIENT_ORIGIN?.split(",") || [ 'https://it-conference.netlify.app', 'http://localhost:5173' ],
     credentials: true,
   })
 );
