@@ -1,5 +1,4 @@
 // server.js
-
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -24,16 +23,26 @@ const allowedOrigins = process.env.CLIENT_ORIGIN
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200); // ✅ handle preflight
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin); // exact origin
+    res.setHeader("Access-Control-Allow-Credentials", "true"); // allow cookies
   }
+
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,DELETE,OPTIONS"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With"
+  );
+
+  // ✅ handle preflight requests
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204); // 204 No Content
+  }
+
   next();
 });
 
@@ -43,7 +52,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // --- Routes ---
-// app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
