@@ -10,7 +10,6 @@ import { fileURLToPath } from "url";
 import connectDB from "./config/mongodb.js";
 import registerRoutes from "./routes/registerRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
-// import statusRoutes from "./routes/statusRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
@@ -37,7 +36,7 @@ app.use(
   })
 );
 
-// ✅ handle preflight requests
+// ✅ handle preflight requests globally
 app.options("*", cors());
 
 // --- Middleware ---
@@ -46,11 +45,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // --- Routes ---
-// app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
-// app.use("/api/status", statusRoutes);
 
 // --- Health Check ---
 app.get("/health", (req, res) => res.json({ ok: true }));
