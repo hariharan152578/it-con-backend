@@ -237,6 +237,7 @@ const participantSchema = new mongoose.Schema({
   designation: { type: String, required: true },
   organisation: { type: String, required: true },
   email: { type: String, required: true },
+  proofUrl: { type: String },
   phone: { type: String, required: true },
   gender: { type: String, enum: ["Male", "Female", "Other"], required: true } 
 }, { _id: false });

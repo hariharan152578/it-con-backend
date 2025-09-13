@@ -58,7 +58,8 @@ const abstractStatusSchema = new mongoose.Schema({
 
   abstractStatus: { type: String, enum: ["pending","approved","rejected"], default: "pending" },
   abstractApprovedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", default: null },
-
+  reason:{type:String},
+  abstractreasonBy:{type:mongoose.Schema.Types.ObjectId,ref:"Admin",default:null},
   finalPaperStatus: { type: String, enum: ["pending","approved","rejected"], default: "pending" },
   paperApprovedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", default: null },
 

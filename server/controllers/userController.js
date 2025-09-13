@@ -78,6 +78,8 @@
 
 import asyncHandler from "express-async-handler";
 import User from "../models/userModel.js";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import AbstractStatus from "../models/abstractStatusModel.js";
 import { generateToken } from "../middleware/authMiddleware.js";
 import { sendEmail } from "../config/email.js";
@@ -172,7 +174,7 @@ export const loginUser = asyncHandler(async (req, res) => {
       { userId: username }
     ]
   });
-  if (!user) return res.status(400).json({ message: "Invalid email/userId" });
+  if (!user) return res.status(400).json({ message: "Invalid username" });
   if (!(await user.matchPassword(password))) return res.status(401).json({ message: "Invalid password" });
 
   res.json({
@@ -230,6 +232,86 @@ export const getMe = asyncHandler(async (req, res) => {
     participants: registration ? registration.participants : [], // Include participants if available
     presentationMode: registration ? registration.presentationMode : "Not specified" // Include presentation mode if available
   });
+});
+
+// 🟢 Step 1: Request reset password
+
+export const requestPasswordOtp = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Hash OTP before saving
+  const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
+
+  user.resetPasswordToken = otpHash;
+  user.resetPasswordExpire = Date.now() + 1 * 60 * 1000; // valid for 10 min
+  await user.save();
+
+  // Send OTP email
+  await sendEmail({
+    to: user.email,
+    subject: "Password Reset OTP",
+    html: `
+      <h2>Password Reset Request</h2>
+      <p>Hello ${user.name || user.email},</p>
+      <p>Your OTP to reset your password is:</p>
+      <h3 style="color:#2563eb;">${otp}</h3>
+      <p>This OTP is valid for 10 minutes.</p>
+    `,
+  });
+
+  res.json({ message: "OTP sent to email" });
+}); 
+// 🟢 Step 2: Reset password
+// 🟢 Step 2: Verify OTP & send new password
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ message: "email, otp and newPassword required" });
+  }
+
+  const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
+
+  const user = await User.findOne({
+    email,
+    resetPasswordToken: otpHash,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return res.status(400).json({ message: "Invalid or expired OTP" });
+  }
+
+  // Hash and save the new password
+  const salt = await bcrypt.genSalt(10);
+  user.password = await bcrypt.hash(newPassword, salt);
+
+  // Clear OTP fields
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+   
+  await user.save();
+
+  // Optionally send confirmation email (do NOT send the password)
+  await sendEmail({
+    to: user.email,
+    subject: "Password Changed",
+    html: `
+      <h2>Password Changed</h2>
+      <p>Hello ${user.name || user.email},</p>
+      <p>Your password was changed successfully. If you did not perform this action, contact support immediately.</p>
+    `,
+  });
+
+  res.status(200).json({ message: "Password updated successfully" });
+
 });
 
 

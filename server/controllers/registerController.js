@@ -155,6 +155,7 @@ import Registration from "../models/registerModel.js";
 import AbstractStatus from "../models/abstractStatusModel.js";
 import User from "../models/userModel.js";
 import cloudinary from "../config/cloudinary.js";
+import { connect } from "mongoose";
 
 // Helper: Convert buffer to base64 data URI
 const bufferToDataUri = (file) => `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
@@ -364,9 +365,12 @@ export const uploadFinalPaper = asyncHandler(async (req, res) => {
 
   const userId = req.user.id;
   const registration = await Registration.findOne({ userId });
+  const abstractStatus=await AbstractStatus.findOne({userId})
   if (!registration) return res.status(404).json({ message: "Registration not found" });
 
   const status = await AbstractStatus.findOne({ userId });
+  if(status.reason!==null)
+    return res.status(403).json({message:`Abstract rejected by Admin ${abstractStatus.reason}`})
   if (!status || status.abstractStatus !== "approved")
     return res.status(403).json({ message: "Abstract not approved yet. Admin approval required before uploading final paper." });
 
