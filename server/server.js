@@ -3,7 +3,6 @@
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
-import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -11,6 +10,7 @@ import connectDB from "./config/mongodb.js";
 import registerRoutes from "./routes/registerRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+// import statusRoutes from "./routes/statusRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -22,22 +22,20 @@ const allowedOrigins = process.env.CLIENT_ORIGIN
   ? process.env.CLIENT_ORIGIN.split(",")
   : ["https://it-conference.netlify.app", "http://localhost:5173"];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    credentials: true,
-  })
-);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 
-// ✅ handle preflight requests globally
-app.options("*", cors());
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200); // ✅ handle preflight
+  }
+  next();
+});
 
 // --- Middleware ---
 app.use(express.json({ limit: "10mb" }));
@@ -45,9 +43,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // --- Routes ---
+// app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
+// app.use("/api/status", statusRoutes);
 
 // --- Health Check ---
 app.get("/health", (req, res) => res.json({ ok: true }));
