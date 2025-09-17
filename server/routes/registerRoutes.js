@@ -24,7 +24,13 @@ import upload from "../middleware/multer.js";
 
 const router = Router();
 
-router.post("/", authRequest, submitRegistration); 
+// router.post("/", authRequest,upload.single("proof"), submitRegistration);
+router.post(
+  "/",
+  authRequest,
+  upload.single("proof"),
+  submitRegistration
+); 
 router.post("/paper", authRequest, upload.single("file"), uploadFinalPaper);
 router.post("/payment", authRequest, processPayment);
 

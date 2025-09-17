@@ -22,7 +22,8 @@ const router = express.Router();
 
 router.get("/users", protectAdmin, admin, getAllUsers); 
 router.get("/users/:id", protectAdmin, admin, getUserById);
-router.put("/users/abstract-status/:id", protectAdmin, admin, updateUserApproval);
+
+router.put("/users/abstract/:id", protectAdmin, admin, updateUserApproval);
 
 router.post("/signup", registerAdmin);
 router.post("/login", loginAdmin);
