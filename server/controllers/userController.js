@@ -96,7 +96,7 @@ export const getMe = asyncHandler(async (req, res) => {
     name: user.name,
     email: user.email,
     mobileno: user.mobileno,
-    abstractStatus: abstractStatus ? abstractStatus.abstractStatus : "No Data",
+    abstractStatus: abstractStatus ? abstractStatus.abstractStatus : "pending",
     paperStatus: abstractStatus ? abstractStatus.paperStatus : "pending",
     paymentStatus: abstractStatus ? abstractStatus.paymentStatus : "pending",
     participants: registration ? registration.participants : [],
