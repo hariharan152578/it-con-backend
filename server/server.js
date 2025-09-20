@@ -74,7 +74,7 @@ const __dirname = path.dirname(__filename);
 // --- CORS Setup ---
 const allowedOrigins = process.env.CLIENT_ORIGIN
   ? process.env.CLIENT_ORIGIN.split(",").map(o => o.trim()) // ✅ fix: trim spaces/newlines
-  : ["https://it-conference.netlify.app", "http://localhost:5173"];
+  : ["https://it-conference.netlify.app", "http://localhost:5173","https://admin-conference.netlify.app"];
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
