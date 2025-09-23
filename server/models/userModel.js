@@ -51,8 +51,8 @@ const userSchema = mongoose.Schema({
   resetPasswordExpire: Date,
   role: { type: String, default: "user" },
   userId: { type: String, unique: true, default: generateUserId },
-  abstractStatus: { type: String, enum: ["No Data","under review", "approved", "rejected"], default: "No Data" },
-  paperStatus: { type: String, enum: ["No Data","submitted"], default: "No Data" },
+  abstractStatus: { type: String, enum: ["No Abstract","under review", "approved", "rejected"], default: "No Abstract" },
+  paperStatus: { type: String, enum: ["No Paper","submitted"], default: "No Paper" },
   paymentStatus: { type: String, enum: ["unpaid", "paid"], default: "unpaid" },
 }, { timestamps: true });
 

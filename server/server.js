@@ -10,6 +10,7 @@ import connectDB from "./config/mongodb.js";
 import registerRoutes from "./routes/registerRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import enquiries from "./routes/enquiryRoutes.js"
 // import statusRoutes from "./routes/statusRoutes.js";
 
 dotenv.config();
@@ -51,6 +52,7 @@ app.use(cookieParser());
 app.use("/api/register", registerRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/enquiries",enquiries);
 // app.use("/api/status", statusRoutes);
 
 // --- Health Check ---
