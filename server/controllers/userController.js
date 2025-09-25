@@ -2,8 +2,8 @@ import asyncHandler from "express-async-handler";
 import crypto from "crypto";
 import validator from "validator";
 import User from "../models/userModel.js";
-import AbstractStatus from "../models/abstractStatusModel.js";
 import Registration from "../models/registerModel.js";
+import AbstractStatus from "../models/abstractStatusModel.js"
 import { generateToken } from "../middleware/authMiddleware.js";
 import { sendEmail } from "../config/email.js";
 import { emailTemplate } from "../config/emailTemplate.js";
@@ -27,7 +27,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Please enter a valid email" });
   }
 
-  // Create user (password hashing handled in schema pre-save hook)
+  // Create user
   const user = await User.create({ name, email, password, mobileno });
   if (!user) return res.status(400).json({ message: "Invalid user data" });
 
@@ -85,20 +85,21 @@ export const loginUser = asyncHandler(async (req, res) => {
 // ----------------------------
 export const getMe = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id).select("-password");
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
 
-  const abstractStatus = await AbstractStatus.findOne({ userId: user._id });
   const registration = await Registration.findOne({ userId: user._id });
-
+  const abstractStatus=await AbstractStatus.findOne({userId:user._id})
   res.json({
     _id: user._id,
-    userId: user.userId,
     name: user.name,
     email: user.email,
     mobileno: user.mobileno,
-    abstractStatus: abstractStatus ? abstractStatus.abstractStatus : "pending",
-    paperStatus: abstractStatus ? abstractStatus.paperStatus : "pending",
-    paymentStatus: abstractStatus ? abstractStatus.paymentStatus : "pending",
+    discount:abstractStatus ? abstractStatus.discount : false,
+    abstractStatus: registration?user.abstractStatus : "No Abstract",
+    paperStatus:registration? user.paperStatus : "No Paper",
+    paymentStatus:registration?user.paymentStatus: "Unpaid",
     participants: registration ? registration.participants : [],
     presentationMode: registration ? registration.presentationMode : "Not specified",
   });
@@ -144,20 +145,16 @@ export const requestPasswordOtp = asyncHandler(async (req, res) => {
 export const verifyOtp = asyncHandler(async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
-  // Validate input
   if (!email || !otp || !newPassword) {
     return res.status(400).json({ message: "email, otp and newPassword are required" });
   }
 
-  // OTP must be 6 digits
   if (!/^\d{6}$/.test(otp)) {
     return res.status(400).json({ message: "OTP must be a 6-digit number" });
   }
 
-  // Hash OTP
   const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
 
-  // Validate user with OTP
   const user = await User.findOne({
     email,
     resetPasswordToken: otpHash,
@@ -165,16 +162,12 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   });
   if (!user) return res.status(400).json({ message: "Invalid or expired OTP" });
 
-  // Set new password (hashing handled in schema)
   user.password = newPassword;
-
-  // Clear OTP fields
   user.resetPasswordToken = undefined;
   user.resetPasswordExpire = undefined;
 
   await user.save();
 
-  // Send confirmation email
   await sendEmail({
     to: user.email,
     subject: "Password Changed",

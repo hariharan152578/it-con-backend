@@ -377,12 +377,41 @@ export const emailTemplate = (
                     ${dynamicContentHtml}
                   </td>
                 </tr>
-                <tr>
-                  <td align="center" style="padding:20px;font-size:12px;color:#888;">
-                    📞 +91 88702 95336 | 📧 ksritconference@gmail.com <br/>
-                    © ${new Date().getFullYear()} Conference Portal
-                  </td>
-                </tr>
+               <tr>
+  <td align="center" style="padding: 20px 0;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td align="center" style="font-family: Arial, sans-serif; font-size: 14px; color: #888888;">
+          <!-- 📞 Contact info -->
+          <p style="margin: 5px 0;">
+            📞 +91 88702 95336 | 📧 ksritconference@gmail.com
+          </p>
+
+          <!-- 🌐 Social icons -->
+          <div style="margin: 15px 0;">
+            <a href="https://www.linkedin.com/company/ksrce?originalSubdomain=in" target="_blank" style="margin: 0 10px;">
+              <img src="data:image/png;base64,...." alt="LinkedIn" width="36" style="display:inline-block; vertical-align:middle;">
+            </a>
+            <a href="https://wa.me/918870295336" target="_blank" style="margin: 0 10px;">
+              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-jy74DqQgjct3lvMoc5kKvKBoze3zt4Haiw&s" alt="WhatsApp" width="36" style="display:inline-block; vertical-align:middle;">
+            </a>
+            <a href="mailto:ksritconference@gmail.com" style="margin: 0 10px;">
+              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSeeceiZtze55yNLLKmme9KuPcPqt9TXSyr5w&s" alt="Email" width="36" style="display:inline-block; vertical-align:middle;">
+            </a>
+            <a href="https://ksrce.ac.in/" target="_blank" style="margin: 0 10px;">
+              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSEHfmd0qwHhVjUHnObfu-1clz_qsPTDSkCmA&s" alt="Website" width="36" style="display:inline-block; vertical-align:middle;">
+            </a>
+          </div>
+
+          <!-- 📌 Copyright -->
+          <p style="margin-top: 15px; font-size: 12px; color: #aaaaaa;">
+            © ${new Date().getFullYear()} Conference Portal. All rights reserved.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
               </table>
             </td>
           </tr>

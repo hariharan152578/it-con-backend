@@ -6,21 +6,46 @@ export const generateToken = (id) => {
 };
 
 
+// export const authRequest = (req, res, next) => {
+//   const authHeader = req.headers.authorization;
+//   const token = authHeader?.split(" ")[1];
+//   if (!token) {
+//     return res.status(401).json({ message: "Not authorized, no token" });
+//   }
+
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     req.user = { id: decoded.id, token }; // store both id + raw token
+//     next();
+//   } catch (error) {
+//     return res.status(401).json({ message: "Not authorized, token failed", error: error.message });
+//   }
+// };
+
+// ✅ Auth Request Middleware (global)
 export const authRequest = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+ const authHeader = req.headers.authorization;
+ 
+ 
   const token = authHeader?.split(" ")[1];
+
+
   if (!token) {
     return res.status(401).json({ message: "Not authorized, no token" });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { id: decoded.id, token }; // store both id + raw token
+
+    // 🔥 store both userId and raw token
+    req.user = { id: decoded.id, token };
+
     next();
   } catch (error) {
-    return res.status(401).json({ message: "Not authorized, token failed", error: error.message });
+    return res.status(401).json({ message: "Not authorized, token failed" });
   }
 };
+
 export const protectAdmin = asyncHandler(async (req, res, next) => {
   let token;
 
