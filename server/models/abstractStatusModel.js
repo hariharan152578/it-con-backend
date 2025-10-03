@@ -17,7 +17,7 @@ const abstractStatusSchema = new mongoose.Schema(
 
     paperStatus: {
       type: String,
-      enum: ["No Paper", "submitted"],
+      enum: ["No Paper", "Submitted"],
       default: "No Paper",
     },
 

@@ -3,13 +3,17 @@ import Registration from "../models/registerModel.js";
 import AbstractStatus from "../models/abstractStatusModel.js";
 import User from "../models/userModel.js";
 import cloudinary from "../config/cloudinary.js";
+import crypto from "crypto";
+import axios from "axios";
+// Helper: convert buffer to Base64 for Cloudinary
+const bufferToDataUri = (file) =>
+  `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
 
-// Helper: Convert buffer to base64 data URI
-const bufferToDataUri = (file) => `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
-
+// ----------------------------
+// Submit Registration (unchanged, except workflow updates)
+// ----------------------------
 // export const submitRegistration = asyncHandler(async (req, res) => {
 //   const userId = req.user?.id;
-  
 //   if (!userId) return res.status(401).json({ message: "Not authorized" });
 
 //   let {
@@ -27,7 +31,7 @@ const bufferToDataUri = (file) => `data:${file.mimetype};base64,${file.buffer.to
 //   const user = await User.findById(userId);
 //   if (!user) return res.status(404).json({ message: "User not found" });
 
-//   // ✅ Parse participants if sent as string
+//   // Parse participants if JSON string
 //   if (typeof participants === "string") {
 //     try {
 //       participants = JSON.parse(participants);
@@ -36,22 +40,35 @@ const bufferToDataUri = (file) => `data:${file.mimetype};base64,${file.buffer.to
 //     }
 //   }
 
-//   // ✅ Require file
-//   if (!req.file) return res.status(400).json({ message: "File is required" });
+//   if (!Array.isArray(participants) || participants.length < 1 || participants.length > 4) {
+//     return res.status(400).json({ message: "Participants must be between 1 and 4" });
+//   }
 
-//   // ✅ Upload file to Cloudinary
-//   const proofUrl = await new Promise((resolve, reject) => {
-//     const stream = cloudinary.uploader.upload_stream(
-//       { resource_type: "auto", folder: "proofs" },
-//       (error, result) => {
-//         if (error) reject(new Error("Cloudinary upload failed"));
-//         else resolve(result.secure_url);
-//       }
+//   // Upload proofs (optional)
+//   let proofUrls = [];
+//   if (req.files && req.files.length > 0) {
+//     proofUrls = await Promise.all(
+//       req.files.map(
+//         (file) =>
+//           new Promise((resolve, reject) => {
+//             const stream = cloudinary.uploader.upload_stream(
+//               { resource_type: "auto", folder: "proofs" },
+//               (error, result) => {
+//                 if (error) reject(new Error("Cloudinary upload failed"));
+//                 else resolve(result.secure_url);
+//               }
+//             );
+//             stream.end(file.buffer);
+//           })
+//       )
 //     );
-//     stream.end(req.file.buffer);
-//   });
+//   }
 
-//   // ✅ Save/Update registration
+//   participants = participants.map((p, idx) => ({
+//     ...p,
+//     proofUrl: proofUrls[idx] || null,
+//   }));
+
 //   const registration = await Registration.findOneAndUpdate(
 //     { userId },
 //     {
@@ -65,82 +82,139 @@ const bufferToDataUri = (file) => `data:${file.mimetype};base64,${file.buffer.to
 //       abstractContent,
 //       abstractExpression,
 //       presentationMode,
-//       proofUrl,
 //     },
 //     { new: true, upsert: true, runValidators: true }
 //   );
-// await User.findByIdAndUpdate(userId, { abstractStatus: "under review" }, { new: true });
-//   // ✅ Update abstract workflow ONLY in AbstractStatus
+
+//   // Workflow update
+// if (registration) {
+//   // If registration exists, update abstract status
+//   await User.findByIdAndUpdate(
+//     userId,
+//     { abstractStatus: "under review" },
+//     { new: true }
+//   );
+
 //   await AbstractStatus.findOneAndUpdate(
 //     { userId },
-//     { abstractStatus: "Submitted",rejectedReason:null, },
+//     { abstractStatus: "Submitted", rejectedReason: null },
 //     { new: true, upsert: true }
 //   );
+// } else {
+//   // No registration -> make sure statuses are set to "No abstract" and "No paper"
+//   await AbstractStatus.findOneAndUpdate(
+//     { userId },
+//     { abstractStatus: "No abstract", paperStatus: "No paper" },
+//     { new: true, upsert: true }
+//   );
+// }
 
 //   res.status(201).json({
 //     message: "Registration & abstract submitted. Await admin approval.",
-//     registration
+//     registration,
 //   });
 // });
 
 
+// export const submitRegistration = asyncHandler(async (req, res) => {
+//   const userId = req.user?.id;
+//   if (!userId) return res.status(401).json({ message: "Not authorized" });
 
+//   let {
+//     participants,
+//     address,
+//     country,
+//     track,
+//     pincode,
+//     abstractTitle,
+//     abstractContent,
+//     abstractExpression,
+//     presentationMode,
+//   } = req.body;
 
-// ----------------------------
-// Upload Final Paper
-// ----------------------------
-// export const uploadFinalPaper = asyncHandler(async (req, res) => {
-//   const userId = req.user.id;
-
-//   const registration = await Registration.findOne({ userId });
-//   if (!registration) {
-//     return res.status(404).json({ message: "Registration not found" });
-//   }
-
-//   const status = await AbstractStatus.findOne({ userId });
-//   if (!status) {
-//     return res.status(404).json({ message: "Abstract workflow not found" });
-//   }
-
-//   // 🔹 Ensure abstract is approved before final paper upload
-//   if (status.abstractStatus.toLowerCase() !== "approved") {
-//     if (status.abstractStatus.toLowerCase() === "rejected") {
-//       return res
-//         .status(403)
-//         .json({ message: `Abstract rejected by Admin. Reason: ${status.rejectedReason || "No reason provided"}` });
+//   // Parse participants if sent as string
+//   if (typeof participants === "string") {
+//     try {
+//       participants = JSON.parse(participants);
+//     } catch {
+//       return res.status(400).json({ message: "Invalid participants JSON" });
 //     }
-//     return res
-//       .status(403)
-//       .json({ message: "Abstract not approved yet. Admin approval required before uploading final paper." });
 //   }
 
-//   if (!req.file) {
-//     return res.status(400).json({ message: "No file uploaded" });
+//   // Validate participants array
+//   if (!Array.isArray(participants) || participants.length < 1 || participants.length > 4) {
+//     return res.status(400).json({ message: "Participants must be between 1 and 4" });
 //   }
 
-//   // 🔹 Upload to Cloudinary
-//   const result = await cloudinary.uploader.upload(bufferToDataUri(req.file), {
-//     resource_type: "auto",
-//     folder: "conference/papers",
-//     public_id: `paper_${userId}`,
-//   });
+//   // Upload proofs if any
+//   let proofUrls = [];
+//   if (req.files && req.files.length > 0) {
+//     proofUrls = await Promise.all(
+//       req.files.map(
+//         (file) =>
+//           new Promise((resolve, reject) => {
+//             const stream = cloudinary.uploader.upload_stream(
+//               { resource_type: "auto", folder: "proofs" },
+//               (error, result) => {
+//                 if (error) reject(new Error("Cloudinary upload failed"));
+//                 else resolve(result.secure_url);
+//               }
+//             );
+//             stream.end(file.buffer);
+//           })
+//       )
+//     );
+//   }
 
-//   // 🔹 Save in Registration
-//   registration.paperUrl = result.secure_url;
-//   await registration.save();
+//   // Attach proofs to participants
+//   participants = participants.map((p, idx) => ({
+//     ...p,
+//     proofUrl: proofUrls[idx] || null,
+//   }));
 
-//   // 🔹 Update workflow status
-//   status.paperStatus = "submitted"; // or "pending" if you want admin to approve
-//   await status.save();
-
-//   res.json({
-//     message: "Final paper uploaded. Await admin approval.",
-//     registration,
-//     workflow: {
-//       abstractStatus: status.abstractStatus,
-//       paperStatus: status.paperStatus, // ✅ match field name
-//       paymentStatus: status.paymentStatus,
+//   // Save / update registration
+//   const registration = await Registration.findOneAndUpdate(
+//     { userId },
+//     {
+//       uniqueId: userId, // or generate your own unique ID
+//       participants,
+//       address,
+//       country,
+//       track,
+//       pincode,
+//       abstractTitle,
+//       abstractContent,
+//       abstractExpression,
+//       presentationMode,
 //     },
+//     { new: true, upsert: true, runValidators: true }
+//   );
+
+// if (registration) {
+//   // If registration exists, update abstract status
+//   await User.findByIdAndUpdate(
+//     userId,
+//     { abstractStatus: "under review" },
+//     { new: true }
+//   );
+
+//   await AbstractStatus.findOneAndUpdate(
+//     { userId },
+//     { abstractStatus: "Submitted", rejectedReason: null },
+//     { new: true, upsert: true }
+//   );
+// } else {
+//   // No registration -> make sure statuses are set to "No abstract" and "No paper"
+//   await AbstractStatus.findOneAndUpdate(
+//     { userId },
+//     { abstractStatus: "No abstract", paperStatus: "No paper" },
+//     { new: true, upsert: true }
+//   );
+// }
+
+//   res.status(201).json({
+//     message: "Registration & abstract submitted. Await admin approval.",
+//     registration,
 //   });
 // });
 
@@ -180,23 +254,26 @@ export const submitRegistration = asyncHandler(async (req, res) => {
   // ✅ Upload proofs (if provided)
   let proofUrls = [];
   if (req.files && req.files.length > 0) {
-    proofUrls = await Promise.all(
-      req.files.map(
-        (file) =>
-          new Promise((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-              { resource_type: "auto", folder: "proofs" },
-              (error, result) => {
-                if (error) reject(new Error("Cloudinary upload failed"));
-                else resolve(result.secure_url);
-              }
-            );
-            stream.end(file.buffer);
-          })
-      )
-    );
+ proofUrls = await Promise.all(
+  req.files.map(
+    (file) =>
+      new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { resource_type: "auto", folder: "proofs" },
+          (error, result) => {
+            if (error) {
+              console.error("Cloudinary upload error:", error);
+              reject(error);
+            } else {
+              resolve(result.secure_url);
+            }
+          }
+        );
+        stream.end(file.buffer);
+      })
+  )
+);
   }
-
   // ✅ Attach proofs → participants (missing ones = null)
   participants = participants.map((p, idx) => ({
     ...p,
@@ -221,27 +298,33 @@ export const submitRegistration = asyncHandler(async (req, res) => {
     { new: true, upsert: true, runValidators: true }
   );
 
-if (registration) {
-  // If registration exists, update abstract status
-  await User.findByIdAndUpdate(
-    userId,
-    { abstractStatus: "under review" },
-    { new: true }
-  );
+  if (registration) {
+    // If registration exists, update abstract status
+    await User.findByIdAndUpdate(
+      userId,
+      { abstractStatus: "under review" },
+      { paymentStatus: "Unpaid", paperStatus: "No paper" },
+      { new: true }
+    );
 
-  await AbstractStatus.findOneAndUpdate(
-    { userId },
-    { abstractStatus: "Submitted", rejectedReason: null },
-    { new: true, upsert: true }
-  );
-} else {
-  // No registration -> make sure statuses are set to "No abstract" and "No paper"
-  await AbstractStatus.findOneAndUpdate(
-    { userId },
-    { abstractStatus: "No abstract", paperStatus: "No paper" },
-    { new: true, upsert: true }
-  );
-}
+    await AbstractStatus.findOneAndUpdate(
+      { userId },
+      { abstractStatus: "Submitted", rejectedReason: null },
+      { new: true, upsert: true }
+    );
+  } else {
+    // No registration -> make sure statuses are set to "No abstract" and "No paper"
+    await AbstractStatus.findOneAndUpdate(
+      { userId },
+      { abstractStatus: "No abstract", paperStatus: "No paper" },
+      { new: true, upsert: true }
+    );
+    await User.findOneAndUpdate(
+      { userId },
+      { paymentStatus: "Unpaid", paperStatus: "No paper" },
+      { new: true, upsert: true }
+    );
+  }
 
 
   res.status(201).json({
@@ -251,11 +334,113 @@ if (registration) {
 });
 
 
+const { PHONEPE_MERCHANT_ID, PHONEPE_MERCHANT_SECRET, PHONEPE_BASE_URL } = process.env;
+// ----------------------------
+// Upload Final Paper & Calculate Amount
+// ----------------------------
+
+
+// ----------------------------
+// Process Payment
+// ----------------------------
+
+// ----------------------------
+// Create Payment Order
+// ----------------------------
+// export const createPhonePeOrder = asyncHandler(async (req, res) => {
+//   const userId = req.user.id;
+
+//   const registration = await Registration.findOne({ userId });
+//   if (!registration) {
+//     return res.status(404).json({ message: "Registration not found" });
+//   }
+
+//   const amount = registration.payment.amountPaid;
+//   if (!amount) {
+//     return res.status(400).json({ message: "Amount not set. Upload final paper first." });
+//   }
+
+//   const transactionId = `TXN_${userId}_${Date.now()}`;
+//   const payload = {
+//     merchantId: PHONEPE_MERCHANT_ID,
+//     transactionId,
+//     merchantUserId: userId,
+//     amount: amount * 100, // in paise
+//     redirectUrl: `https://yourdomain.com/payment/success`,
+//     callbackUrl: `https://yourdomain.com/api/payments/phonepe/callback`,
+//     paymentInstrument: {
+//       type: "PAY_PAGE",
+//     },
+//   };
+
+//   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64");
+//   const saltKey = PHONEPE_MERCHANT_SECRET;
+//   const checksum = crypto
+//     .createHash("sha256")
+//     .update(payloadBase64 + "/pg/v1/pay" + saltKey)
+//     .digest("hex");
+
+//   const headers = {
+//     "Content-Type": "application/json",
+//     "X-VERIFY": checksum + "###1",
+//   };
+
+//   try {
+//     const response = await axios.post(`${PHONEPE_BASE_URL}/pg/v1/pay`, { request: payloadBase64 }, { headers });
+
+//     if (response.data.success) {
+//       res.json({
+//         message: "PhonePe order created",
+//         redirectUrl: response.data.data.instrumentResponse.redirectInfo.url,
+//       });
+//     } else {
+//       res.status(400).json({ message: "PhonePe order creation failed", details: response.data });
+//     }
+//   } catch (err) {
+//     res.status(500).json({ message: "PhonePe API error", error: err.message });
+//   }
+// });
+
+
+// ----------------------------
+// Payment Callback (from PhonePe)
+// ----------------------------
+// export const phonePeCallback = asyncHandler(async (req, res) => {
+//   const { transactionId, code, amount } = req.body;
+
+//   if (code !== "PAYMENT_SUCCESS") {
+//     return res.status(400).json({ message: "Payment failed", details: req.body });
+//   }
+
+//   const registration = await Registration.findOne({ "payment.transactionId": transactionId });
+//   if (!registration) {
+//     return res.status(404).json({ message: "Registration not found for transaction" });
+//   }
+
+//   // Update payment
+//   registration.payment.paymentStatus = "paid";
+//   registration.payment.transactionId = transactionId;
+//   registration.payment.paymentDate = new Date();
+//   await registration.save();
+
+//   // Sync with abstract workflow
+//   const status = await AbstractStatus.findOne({ userId: registration.userId });
+//   if (status) {
+//     status.paymentStatus = "Paid";
+//     await status.save();
+//   }
+
+//   res.json({ message: "Payment recorded successfully" });
+// });
+
+
 export const uploadFinalPaper = asyncHandler(async (req, res) => {
   const userId = req.user.id;
 
   const registration = await Registration.findOne({ userId });
   if (!registration) return res.status(404).json({ message: "Registration not found" });
+
+  const { accommodation } = req.body;
 
   const status = await AbstractStatus.findOne({ userId });
   if (!status) return res.status(404).json({ message: "Abstract workflow not found" });
@@ -264,7 +449,7 @@ export const uploadFinalPaper = asyncHandler(async (req, res) => {
     return res.status(403).json({
       message:
         status.abstractStatus === "Rejected"
-          ? `Abstract rejected by Admin. Reason: ${status.rejectedReason || "No reason provided"}`
+          ? `Abstract rejected. Reason: ${status.rejectedReason || "No reason provided"}`
           : "Abstract not approved yet. Admin approval required.",
     });
   }
@@ -278,141 +463,182 @@ export const uploadFinalPaper = asyncHandler(async (req, res) => {
   });
 
   registration.paperUrl = result.secure_url;
+  registration.accommodation=accommodation;
   await registration.save();
 
-  status.paperStatus = "submitted";
-  await status.save();
+  // status.paperStatus = "submitted";
+  if (registration) {
+  // If registration exists, update abstract status
+  await User.findByIdAndUpdate(
+    userId,
+    { paperStatus: "Submitted" },
+    { new: true }
+  );
 
-  // ✅ Amount calculation based on first participant designation
-  const firstParticipant = registration.participants[0];
-  let amount=0;
- if (
-  status.discount === true &&
-  firstParticipant.designation.toLowerCase() === "student"
-) {
-  // Discounted student price
-  amount = parseFloat(process.env.DISCOUNTED_STUDENT_AMOUNT || 7000);
+  await AbstractStatus.findOneAndUpdate(
+    { userId },
+    { paperStatus: "Submitted"},
+    { new: true, upsert: true }
+  );
 } else {
-  // Normal pricing by designation
-  switch (firstParticipant.designation.toLowerCase()) {
-    case "student":
-      amount = parseFloat(process.env.AMOUNT_STUDENT || 10000);
-      break;
-    case "researcher":
-      amount = parseFloat(process.env.AMOUNT_RESEARCHER || 12000);
-      break;
-    case "faculty":
-      amount = parseFloat(process.env.AMOUNT_FACULTY || 13000);
-      break;
-    case "industry":
-      amount = parseFloat(process.env.AMOUNT_INDUSTRY || 15000);
-      break;
-    default:
-      amount = parseFloat(process.env.AMOUNT_DEFAULT || 10000); // fallback
-  }
+  // No registration -> make sure statuses are set to "No abstract" and "No paper"
+  await AbstractStatus.findOneAndUpdate(
+    { userId },
+    { paperStatus: "No paper", paymentStatus: "Unpaid" },
+    { new: true, upsert: true }
+  );
+    await User.findByIdAndUpdate(
+    userId,
+    { paperStatus: "No paper", paymentStatus: "Unpaid" },
+    { new: true }
+  );
 }
+  // await status.save();
 
-  // ✅ Apply admin-approved discount
-  if (status.discount) {
-    amount =amount;
+  // ----------------------------
+  // Fee Calculation
+  // ----------------------------
+  const firstParticipant = registration.participants[0];
+  const designation = firstParticipant.designation.toLowerCase();
+
+  const abstractSubmitDate = registration.createdAt || new Date();
+  const earlyDeadline = new Date(process.env.EARLY_BIRD_DEADLINE);
+  const isEarly = abstractSubmitDate <= earlyDeadline;
+
+  let amount = 0;
+  if (designation === "student") {
+    amount = isEarly
+      ? parseFloat(process.env.EARLY_STUDENT || 5000)
+      : parseFloat(process.env.AMOUNT_STUDENT || 10000);
+  } else if (designation === "researcher") {
+    amount = isEarly
+      ? parseFloat(process.env.EARLY_RESEARCHER || 10000)
+      : parseFloat(process.env.AMOUNT_RESEARCHER || 12000);
+  } else if (designation === "faculty") {
+    amount = isEarly
+      ? parseFloat(process.env.EARLY_FACULTY || 11000)
+      : parseFloat(process.env.AMOUNT_FACULTY || 13000);
+  } else if (designation === "industry") {
+    amount = isEarly
+      ? parseFloat(process.env.EARLY_INDUSTRY || 13000)
+      : parseFloat(process.env.AMOUNT_INDUSTRY || 15000);
   }
+
+  if (status.discount && designation === "student") {
+    amount = parseFloat(process.env.DISCOUNTED_STUDENT_AMOUNT || amount);
+  }
+
+  // ✅ ensure payment object exists
+  if (!registration.payment) {
+    registration.payment = {};
+  }
+  registration.payment.amountPaid = amount;
+  registration.payment.currency = process.env.CURRENCY || "INR";
+  await registration.save();
 
   res.json({
     message: "Final paper uploaded successfully. Proceed to payment.",
     paperUrl: registration.paperUrl,
     amount,
-    currency: process.env.CURRENCY || "INR",
-    redirectUrl: `/api/payments/create-order?userId=${userId}&amount=${amount}&currency=${process.env.CURRENCY || "INR"}`,
+    accommodation,
+    currency: registration.payment.currency,
+    redirectUrl: `/api/payments/create-order?userId=${userId}&amount=${amount}&currency=${registration.payment.currency}`,
   });
 });
 
-
-
 // ----------------------------
-// Process Payment
+// Create PhonePe Payment Order
 // ----------------------------
-// export const processPayment = asyncHandler(async (req, res) => {
-//   const userId = req.user.id;
-//   const { paymentMethod, transactionId, amountPaid, currency } = req.body;
-
-//   const registration = await Registration.findOne({ userId });
-//   if (!registration) return res.status(404).json({ message: "Registration not found" });
-
-//   const status = await AbstractStatus.findOne({ userId });
-//   if (!status || status.finalPaperStatus !== "approved")
-//     return res.status(403).json({ message: "Final paper not approved yet. Cannot process payment." });
-
-//   registration.paymentStatus = "paid";
-//   registration.paymentMethod = paymentMethod;
-//   registration.transactionId = transactionId;
-//   registration.amountPaid = amountPaid;
-//   registration.currency = currency || "INR";
-//   registration.paymentDate = new Date();
-//   await registration.save();
-
-//   status.paymentStatus = "approved";
-//   status.paymentApprovedBy = req.user._id;
-//   await status.save();
-
-//   res.json({ message: "Payment recorded successfully", registration, workflow: { abstractStatus: status.abstractStatus, finalPaperStatus: status.finalPaperStatus, paymentStatus: status.paymentStatus } });
-// });
-
-export const processPayment = asyncHandler(async (req, res) => {
+export const createPhonePeOrder = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { paymentMethod, transactionId } = req.body;
 
   const registration = await Registration.findOne({ userId });
-  if (!registration) return res.status(404).json({ message: "Registration not found" });
-
-  const status = await AbstractStatus.findOne({ userId });
-  if (!status || status.paperStatus !== "submitted")
-    return res.status(403).json({ message: "Final paper not submitted yet. Cannot process payment." });
-
-  // ✅ Recalculate amount based on designation and discount
-  const firstParticipant = registration.participants[0];
-  let amount = 0;
-
-  switch (firstParticipant.designation.toLowerCase()) {
-    case "student":
-      amount = parseFloat(process.env.AMOUNT_STUDENT || 1000);
-      break;
-    case "researcher":
-      amount = parseFloat(process.env.AMOUNT_RESEARCHER || 2000);
-      break;
-    case "faculty":
-      amount = parseFloat(process.env.AMOUNT_FACULTY || 3000);
-      break;
-    case "industry":
-      amount = parseFloat(process.env.AMOUNT_INDUSTRY || 5000);
-      break;
-    default:
-      amount = parseFloat(process.env.AMOUNT_STUDENT || 1000);
+  if (!registration) {
+    return res.status(404).json({ message: "Registration not found" });
   }
 
-  if (status.discount) {
-    const discountPercent = parseFloat(process.env.DISCOUNT_PERCENTAGE || 30);
-    amount = amount - (amount * discountPercent) / 100;
+  const amount = registration.payment?.amountPaid;
+  if (!amount) {
+    return res.status(400).json({ message: "Amount not set. Upload final paper first." });
   }
 
-  registration.paymentStatus = "paid";
-  registration.paymentMethod = paymentMethod;
-  registration.transactionId = transactionId;
-  registration.amountPaid = amount;
-  registration.currency = process.env.CURRENCY || "INR";
-  registration.paymentDate = new Date();
+  const transactionId = `TXN_${userId}_${Date.now()}`;
+
+  // ✅ Save transactionId
+  if (!registration.payment) {
+    registration.payment = {};
+  }
+  registration.payment.transactionId = transactionId;
   await registration.save();
 
-  status.paymentStatus = "paid";
-  status.paymentApprovedBy = req.user._id;
-  await status.save();
-
-  res.json({
-    message: "Payment recorded successfully",
-    registration,
-    workflow: {
-      abstractStatus: status.abstractStatus,
-      paperStatus: status.paperStatus,
-      paymentStatus: status.paymentStatus,
+  const payload = {
+    merchantId: PHONEPE_MERCHANT_ID,
+    transactionId,
+    merchantUserId: userId,
+    amount: amount * 100, // in paise
+    redirectUrl: `https://yourdomain.com/payment/success`,
+    callbackUrl: `https://yourdomain.com/api/payments/phonepe/callback`,
+    paymentInstrument: {
+      type: "PAY_PAGE",
     },
-  });
+  };
+
+  const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64");
+  const saltKey = PHONEPE_MERCHANT_SECRET;
+  const checksum = crypto
+    .createHash("sha256")
+    .update(payloadBase64 + "/pg/v1/pay" + saltKey)
+    .digest("hex");
+
+  const headers = {
+    "Content-Type": "application/json",
+    "X-VERIFY": checksum + "###1",
+  };
+
+  try {
+    const response = await axios.post(
+      `${PHONEPE_BASE_URL}/pg/v1/pay`,
+      { request: payloadBase64 },
+      { headers }
+    );
+
+    if (response.data.success) {
+      res.json({
+        message: "PhonePe order created",
+        redirectUrl: response.data.data.instrumentResponse.redirectInfo.url,
+      });
+    } else {
+      res.status(400).json({ message: "PhonePe order creation failed", details: response.data });
+    }
+  } catch (err) {
+    res.status(500).json({ message: "PhonePe API error", error: err.message });
+  }
+});
+
+// ----------------------------
+// PhonePe Callback
+// ----------------------------
+export const phonePeCallback = asyncHandler(async (req, res) => {
+  const { transactionId, code } = req.body;
+
+  if (code !== "PAYMENT_SUCCESS") {
+    return res.status(400).json({ message: "Payment failed", details: req.body });
+  }
+
+  const registration = await Registration.findOne({ "payment.transactionId": transactionId });
+  if (!registration) {
+    return res.status(404).json({ message: "Registration not found for transaction" });
+  }
+
+  registration.payment.paymentStatus = "paid";
+  registration.payment.paymentDate = new Date();
+  await registration.save();
+
+  const status = await AbstractStatus.findOne({ userId: registration.userId });
+  if (status) {
+    status.paymentStatus = "Paid";
+    await status.save();
+  }
+
+  res.json({ message: "Payment recorded successfully" });
 });

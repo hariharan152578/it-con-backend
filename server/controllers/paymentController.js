@@ -1,66 +1,192 @@
 import asyncHandler from "express-async-handler";
+import jwt from "jsonwebtoken";
+import QRCode from "qrcode";
 import Registration from "../models/registerModel.js";
-import AbstractStatus from "../models/abstractStatusModel.js";
-import { createPhonePeOrder, verifyPhonePePayment } from "../config/phonepe.js";
 import User from "../models/userModel.js";
+import { sendEmail } from "../config/email.js";
+import AbstractStatus from "../models/abstractStatusModel.js";
+import { emailTemplate } from "../config/emailTemplate.js";
+import PDFDocument from "pdfkit";
+// Create Order (dynamic)
+export const createOrder = asyncHandler(async (req, res) => {
+  const { userId, amount, currency } = req.query;
 
-// ----------------------------
-// Create Payment Order
-// ----------------------------
-export const initiatePayment = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
+  if (!userId || !amount || !currency) {
+    return res.status(400).json({ message: "Missing userId, amount, or currency" });
+  }
+
   const registration = await Registration.findOne({ userId });
   if (!registration) return res.status(404).json({ message: "Registration not found" });
 
-  const firstParticipant = registration.participants[0];
-  let amount = 0;
+  const transactionId = `TXN_${userId}_${Date.now()}`;
 
-  // Payment logic based on designation
-  if (firstParticipant.designation === "Student") amount = 1000;
-  else if (firstParticipant.designation === "Researcher") amount = 2000;
-  else if (firstParticipant.designation === "Faculty") amount = 3000;
-  else if (firstParticipant.designation === "Industry") amount = 5000;
-
-  // Apply discount if approved
-  const status = await AbstractStatus.findOne({ userId });
-  if (status.discount && firstParticipant.designation === "Student") amount = 700;
-
-  // Create order ID
-  const orderId = `ORDER_${userId}_${Date.now()}`;
-
-  const order = await createPhonePeOrder({ amount, orderId, user: req.user });
+  // Save transaction info
+  registration.payment.transactionId = transactionId;
+  registration.payment.amountPaid = Number(amount);
+  registration.payment.currency = currency;
+  registration.payment.paymentStatus = "unpaid";
+  await registration.save();
 
   res.json({
-    message: "Payment order created",
-    order,
-    orderId,
+    success: true,
+    message: "Order created successfully",
+    transactionId,
     amount,
-    currency: "INR",
+    currency,
+    redirectUrl: `/api/payments/complete-payment?userId=${userId}&transactionId=${transactionId}`,
   });
 });
 
-// ----------------------------
-// Verify Payment
-// ----------------------------
-export const confirmPayment = asyncHandler(async (req, res) => {
-  const { paymentId, orderId } = req.body;
-  const paymentStatus = await verifyPhonePePayment({ paymentId });
+// Complete Payment
+export const completePayment = asyncHandler(async (req, res) => {
+  const { userId, transactionId } = req.query;
 
-  if (paymentStatus.success) {
-    const registration = await Registration.findOne({ userId: req.user.id });
-    registration.paymentStatus = "paid";
-    registration.paymentDate = new Date();
-    registration.transactionId = paymentId;
-    registration.amountPaid = paymentStatus.amount / 100;
-    registration.currency = "INR";
-    await registration.save();
-
-    const status = await AbstractStatus.findOne({ userId: req.user.id });
-    status.paymentStatus = "paid";
-    await status.save();
-
-    return res.json({ message: "Payment successful", registration });
+  if (!userId || !transactionId) {
+    return res.status(400).json({ message: "Missing userId or transactionId" });
   }
 
-  res.status(400).json({ message: "Payment verification failed", paymentStatus });
+  // ✅ Find registration
+  const registration = await Registration.findOne({
+    userId,
+    "payment.transactionId": transactionId,
+  });
+  if (!registration) {
+    return res.status(404).json({ message: "Registration not found" });
+  }
+
+  // ✅ Mark as paid
+  registration.payment.paymentStatus = "paid";
+  registration.payment.paymentDate = new Date();
+  await registration.save();
+
+  // ✅ Update User collection
+  await User.findByIdAndUpdate(
+    userId,
+    {
+      paymentStatus: "Paid",
+      paperStatus: registration.finalPaperStatus || "No Paper",
+    },
+    { new: true }
+  );
+
+  // ✅ Update AbstractStatus collection
+  await AbstractStatus.findOneAndUpdate(
+    { userId },
+    {
+      abstractStatus: registration.abstractStatus || "Submitted",
+      finalPaperStatus: registration.finalPaperStatus || "Pending",
+      paymentStatus: "Paid",
+      rejectedReason: null,
+    },
+    { new: true, upsert: true }
+  );
+
+  const user = await User.findById(userId);
+
+  // ✅ Generate hall ticket token
+  const hallTicketToken = jwt.sign(
+    {
+      userId,
+      uniqueId: registration.uniqueId,
+      name: registration.participants[0]?.name,
+      email: registration.participants[0]?.email,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES || "7d" }
+  );
+
+  const hallTicketUrl = `${process.env.CLIENT_ORIGIN}/api/pdf/download-hall-ticket/${hallTicketToken}`;
+
+  // ✅ Generate QR code for hall ticket
+  const qrCodeUrl = await QRCode.toDataURL(hallTicketUrl);
+
+  // ✅ Send confirmation email with QR code
+  if (user?.email) {
+    const htmlContent = emailTemplate(
+      "Payment Successful 🎉",
+      "Your payment was successful. Download your hall ticket below:",
+      registration.participants[0]?.name,
+      registration.participants[0]?.email,
+      userId,
+      registration.abstractTitle,
+      registration.finalPaperStatus,
+      "Paid",
+      {
+        uniqueId: registration.uniqueId,
+        hallTicketUrl,
+        qrCodeUrl, // 🚀 Make sure this gets passed
+      }
+    );
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Conference Payment Successful",
+        text: `Download your hall ticket here: ${hallTicketUrl}`,
+        html: htmlContent,
+      });
+      console.log("✅ Payment confirmation email sent to:", user.email);
+    } catch (err) {
+      console.error("❌ Email sending failed:", err.message);
+    }
+  }
+
+  res.json({
+    message: "Payment completed successfully. Hall ticket email sent.",
+    hallTicketUrl,
+    qrCodeUrl,
+  });
 });
+
+// /**
+//  * Download PDF Hall Ticket
+export const downloadHallTicket = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader("Content-Disposition", "attachment; filename=hall_ticket.pdf");
+    res.setHeader("Content-Type", "application/pdf");
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(22).fillColor("#1e3a8a").text("🎟 Conference Hall Ticket", {
+      align: "center",
+    });
+    doc.moveDown();
+
+    // User Info
+    doc.fontSize(14).fillColor("black");
+    doc.text(`Unique ID: ${payload.uniqueId}`);
+    doc.text(`Name: ${payload.name}`);
+    doc.text(`Organization: ${payload.organization}`);
+    doc.text(`Email: ${payload.email}`);
+    doc.text(`Abstract Title: ${payload.abstractTitle}`);
+    doc.text(`Mode: ${payload.mode}`);
+    doc.text(`Track: ${payload.track}`);
+    doc.moveDown();
+
+    // Status
+    doc.fontSize(14).text("📌 Statuses:");
+    doc.text(`- Payment Status: ${payload.paymentStatus}`);
+    doc.text(`- Abstract Status: ${payload.abstractStatus}`);
+    doc.text(`- Final Paper Status: ${payload.finalPaperStatus}`);
+    doc.text(`- Accommodation: ${payload.accommodation}`);
+    doc.moveDown();
+
+    // Footer
+    doc.moveDown(2);
+    doc.fontSize(10).fillColor("gray").text(
+      "© Conference Portal | Contact: ksritconference@gmail.com",
+      { align: "center" }
+    );
+
+    doc.end();
+  } catch (err) {
+    console.error("❌ Invalid or expired hall ticket token:", err.message);
+    res.status(400).json({ message: "Invalid or expired hall ticket link" });
+  }
+});
+

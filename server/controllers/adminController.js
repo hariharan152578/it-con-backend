@@ -119,15 +119,18 @@ export const getAllUsers = asyncHandler(async (req, res) => {
 });
 
 // Update User Approval Workflow
-
 export const updateUserApproval = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { abstractStatus, rejectedReason, discount } = req.body;
 
-  const status = await AbstractStatus.findOne({ userId: id }).populate("userId", "name email userId");
+  // 1️⃣ Fetch the status record
+  const status = await AbstractStatus.findOne({ userId: id }).populate(
+    "userId",
+    "name email userId"
+  );
   if (!status) return res.status(404).json({ message: "Status record not found" });
 
-  const user = status.userId; // ✅ populated user
+  const user = status.userId;
 
   // --------------------------
   // Abstract workflow
@@ -139,12 +142,11 @@ export const updateUserApproval = asyncHandler(async (req, res) => {
     status.abstractStatus = normalizedStatus;
     status.abstractApprovedBy = req.user._id;
 
+    // Update User collection
     await User.findByIdAndUpdate(id, { abstractStatus: normalizedStatus });
 
     if (normalizedStatus === "Rejected") {
       status.rejectedReason = rejectedReason || "Paper Rejected";
-
-      // Reset dependent statuses
       status.discount = false;
       status.paperStatus = "No Paper";
       status.paymentStatus = "Unpaid";
@@ -157,10 +159,12 @@ export const updateUserApproval = asyncHandler(async (req, res) => {
 
     if (normalizedStatus === "Approved") {
       status.rejectedReason = null;
-      status.discount = discount ?? false;
+      status.discount = discount === true || discount === "true"; // handle string or boolean
     }
 
-    // ✉️ Email notification
+    // --------------------------
+    // Email notification
+    // --------------------------
     if (user?.email) {
       let subject, message;
 
@@ -182,20 +186,26 @@ export const updateUserApproval = asyncHandler(async (req, res) => {
         message = `Your abstract status has been updated to <b>${normalizedStatus}</b>.`;
       }
 
+      // Prepare safe userData object
+      const emailUserData = {
+        abstractStatus: status.abstractStatus || "No Abstract",
+        rejectedReason: status.rejectedReason || "",
+        paperStatus: status.paperStatus || "No Paper",
+        paymentStatus: status.paymentStatus || "Unpaid",
+        discount: status.discount ?? false,
+      };
+
       await sendEmail({
         to: user.email,
         subject,
-        text: `Hello ${user.name}, ${message.replace(/<[^>]+>/g, "")}`, // plain text
+        text: `Hello ${user.name}, ${message.replace(/<[^>]+>/g, "")}`,
         html: emailTemplate(
           subject,
           message,
           user.name,
           user.email,
           user.userId,
-          normalizedStatus,
-          undefined,
-          undefined,
-          status.rejectedReason
+          emailUserData
         ),
       });
     }
@@ -203,10 +213,5 @@ export const updateUserApproval = asyncHandler(async (req, res) => {
     await status.save();
   }
 
-  // --------------------------
-  // Future: Add Paper workflow + Payment workflow
-  // --------------------------
-
   res.json(status);
 });
-

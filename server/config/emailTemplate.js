@@ -1,3 +1,4 @@
+
 // export const emailTemplate = (
 //   title,
 //   message,
@@ -7,28 +8,29 @@
 //   userAbstract,
 //   finalPaperStatus,
 //   paymentStatus,
-//   content
+//   content,
+//   resetLink
 // ) => {
-//   let bannerHtml = '';
-//   let dynamicContentHtml = '';
+//   let bannerHtml = "";
+//   let dynamicContentHtml = "";
 
 //   // --------------------------
-//   // Abstract rejection
+//   // Abstract rejection / status
 //   // --------------------------
 //   if (userAbstract !== undefined && userAbstract !== null) {
-//     if (userAbstract.toLowerCase() === 'rejected') {
-//       bannerHtml = `<img src="https://example.com/abstract-rejected.png" alt="Abstract Rejected Banner" style="width:100%; max-width:600px; height:auto; display:block; border-radius:8px 8px 0 0;" />`;
+//     if (userAbstract.toLowerCase() === "rejected") {
+//       bannerHtml = `<img src="https://example.com/abstract-rejected.png" alt="Abstract Rejected Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
 //       dynamicContentHtml = `
-//         <p style="margin-top: 20px; color: #ff0000;">
+//         <p style="margin-top:20px;color:#ff0000;">
 //           <b>User Name:</b> ${userName}<br/>
 //           <b>Abstract Status:</b> ${userAbstract} ❌<br/>
-//           <b>Reason:</b> ${content  || "Not specified by admin"}
+//           <b>Reason:</b> ${content || "Not specified by admin"}
 //         </p>
 //       `;
 //     } else {
-//       bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRREkO_NkGUNEj0eZnFmTtIa0q_AWsxTq1Lgw&s" alt="Abstract Submission Banner" style="width:100%; max-width:600px; height:auto; display:block; border-radius:8px 8px 0 0;" />`;
+//       bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRREkO_NkGUNEj0eZnFmTtIa0q_AWsxTq1Lgw&s" alt="Abstract Status Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
 //       dynamicContentHtml = `
-//         <p style="margin-top: 20px;">
+//         <p style="margin-top:20px;">
 //           <b>User Name:</b> ${userName}<br/>
 //           <b>Abstract Status:</b> ${userAbstract}<br/>
 //         </p>
@@ -37,22 +39,22 @@
 //   }
 
 //   // --------------------------
-//   // Final Paper rejection
+//   // Final Paper rejection / status
 //   // --------------------------
 //   else if (finalPaperStatus !== undefined && finalPaperStatus !== null) {
-//     if (finalPaperStatus.toLowerCase() === 'rejected') {
-//       bannerHtml = `<img src="https://example.com/finalpaper-rejected.png" alt="Final Paper Rejected Banner" style="width:100%; max-width:600px; height:auto; display:block; border-radius:8px 8px 0 0;" />`;
+//     if (finalPaperStatus.toLowerCase() === "rejected") {
+//       bannerHtml = `<img src="https://example.com/finalpaper-rejected.png" alt="Final Paper Rejected Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
 //       dynamicContentHtml = `
-//         <p style="margin-top: 20px; color: #ff0000;">
+//         <p style="margin-top:20px;color:#ff0000;">
 //           <b>User Name:</b> ${userName}<br/>
 //           <b>Final Paper Status:</b> ${finalPaperStatus} ❌<br/>
 //           <b>Reason:</b> ${content}
 //         </p>
 //       `;
 //     } else {
-//       bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTLpUL9pnhkzyHQvcnP4OHZP5Qr0oAUL7A_xXt4FX0M5SO2ECFkLibK0lcLbcwbPC32Gqc&usqp=CAU" alt="Final Paper Status Banner" style="width:100%; max-width:600px; height:auto; display:block; border-radius:8px 8px 0 0;" />`;
+//       bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTLpUL9pnhkzyHQvcnP4OHZP5Qr0oAUL7A_xXt4FX0M5SO2ECFkLibK0lcLbcwbPC32Gqc&usqp=CAU" alt="Final Paper Status Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
 //       dynamicContentHtml = `
-//         <p style="margin-top: 20px;">
+//         <p style="margin-top:20px;">
 //           <b>User Name:</b> ${userName}<br/>
 //           <b>Final Paper Status:</b> ${finalPaperStatus}<br/>
 //         </p>
@@ -61,36 +63,93 @@
 //   }
 
 //   // --------------------------
-//   // Payment rejection
+//   // Payment rejection / success
 //   // --------------------------
-//   else if (paymentStatus !== undefined && paymentStatus !== null) {
-//     if (paymentStatus.toLowerCase() === 'rejected') {
-//       bannerHtml = `<img src="https://example.com/payment-rejected.png" alt="Payment Rejected Banner" style="width:100%; max-width:600px; height:auto; display:block; border-radius:8px 8px 0 0;" />`;
-//       dynamicContentHtml = `
-//         <p style="margin-top: 20px; color: #ff0000;">
-//           <b>User Name:</b> ${userName}<br/>
-//           <b>Payment Status:</b> ${paymentStatus} ❌<br/>
-//           <b>Reason:</b> ${content}
-//         </p>
-//       `;
-//     } else {
-//       bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQg3_vsVL7OGr6De1j8XcJmMGPZYdVxB5zEewNkNYW3RWPsj-GtNMFAdUwiyz9aWMs6ElI&usqp=CAU" alt="Payment Status Banner" style="width:100%; max-width:600px; height:auto; display:block; border-radius:8px 8px 0 0;" />`;
-//       dynamicContentHtml = `
-//         <p style="margin-top: 20px;">
-//           <b>User Name:</b> ${userName}<br/>
-//           <b>Payment Status:</b> ${paymentStatus}<br/>
-//         </p>
-//       `;
-//     }
+// else if (paymentStatus !== undefined && paymentStatus !== null) {
+// if (paymentStatus?.toLowerCase() === "rejected") {
+//     bannerHtml = `
+//       <img src="https://example.com/payment-rejected.png" 
+//            alt="Payment Rejected" 
+//            style="width:100%;max-width:600px;" />
+//     `;
+//     dynamicContentHtml = `
+//       <p style="color:#dc2626;font-size:16px;">
+//         ❌ <b>Payment Rejected</b>
+//       </p>
+//       <p><b>User:</b> ${userName}</p>
+//       <p><b>Reason:</b> ${content.reason || "Not specified"}</p>
+//     `;
+//   } else if (paymentStatus?.toLowerCase() === "paid") {
+//     bannerHtml = `
+//       <img src="https://cdn-icons-png.flaticon.com/512/190/190411.png" 
+//            alt="Payment Success" 
+//            style="width:100%;max-width:600px;" />
+//     `;
+//     dynamicContentHtml = `
+//       <p style="color:#16a34a;font-size:18px;margin-top:20px;">
+//         ✅ <b>Payment Successful!</b>
+//       </p>
+//       <p><b>User:</b> ${userName}</p>
+//       <p><b>Unique ID:</b> ${content.uniqueId || "N/A"}</p>
+//       <p><b>Abstract Title:</b> ${abstractTitle || "N/A"}</p>
+//       <p><b>Final Paper Status:</b> ${finalPaperStatus || "Pending"}</p>
+//       <p><b>Payment Status:</b> Paid</p>
+//       <div style="text-align:center;margin-top:20px;">
+//         <a href="${content.hallTicketUrl}" 
+//            style="display:inline-block;padding:12px 24px;
+//                   background:#2563eb;color:#fff;
+//                   font-size:16px;font-weight:bold;
+//                   border-radius:6px;text-decoration:none;">
+//           ⬇️ Download Hall Ticket (PDF)
+//         </a>
+//       </div>
+//       <div style="text-align:center;margin-top:20px;">
+//         <p>📌 Or scan this QR code at event check-in:</p>
+//         <img src="${content.qrCodeUrl}" 
+//              alt="QR Code" 
+//              style="max-width:200px;" />
+//       </div>
+//     `;
+//   } else {
+//     bannerHtml = `
+//       <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQg3_vsVL7OGr6De1j8XcJmMGPZYdVxB5zEewNkNYW3RWPsj-GtNMFAdUwiyz9aWMs6ElI&usqp=CAU" 
+//            alt="Payment Pending" 
+//            style="width:100%;max-width:600px;" />
+//     `;
+//     dynamicContentHtml = `
+//       <p><b>User:</b> ${userName}</p>
+//       <p><b>Payment Status:</b> ${paymentStatus || "Pending"}</p>
+//     `;
+//   }
+// }
+
+//   // --------------------------
+//   // Password Reset
+//   // --------------------------
+//   else if (resetLink) {
+//     bannerHtml = `<img src="https://cdn-icons-png.flaticon.com/512/3064/3064197.png" alt="Reset Password Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
+//     dynamicContentHtml = `
+//       <p style="margin-top:20px;">
+//         <b>User Name:</b> ${userName}<br/>
+//         <b>User Email:</b> ${userEmail}<br/>
+//       </p>
+//       <p>You requested to reset your password. Please click below:</p>
+//       <div style="margin:20px 0;text-align:center;">
+//         <a href="${resetLink}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;font-size:16px;font-weight:bold;border-radius:6px;text-decoration:none;">
+//           Reset Password
+//         </a>
+//       </div>
+//       <p style="font-size:14px;color:#555;">If you didn’t request this, ignore this email.</p>
+//     `;
 //   }
 
 //   // --------------------------
-//   // Default registration email
+//   // Default Registration
 //   // --------------------------
 //   else {
-//     bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ_d9ec3NpFtI-GU3xQIu8gVG6qxQH0sY18gzSC5sMMFEqmu3NqT0UyZkvtA7GKKoBamSA&usqp=CAU" alt="KSR College of Engineering Banner" style="width:100%; max-width:600px; height:auto; display:block; border-radius:8px 8px 0 0;" />`;
+//     bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ_d9ec3NpFtI-GU3xQIu8gVG6qxQH0sY18gzSC5sMMFEqmu3NqT0UyZkvtA7GKKoBamSA&usqp=CAU" alt="KSR College of Engineering Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
 //     dynamicContentHtml = `
-//       <p style="margin-top: 20px;">
+//       <p style="margin-top:20px;">
 //         <b>User Name:</b> ${userName}<br/>
 //         <b>User Email:</b> ${userEmail}<br/>
 //         <b>User ID:</b> ${userId}<br/>
@@ -98,8 +157,7 @@
 //       </p>
 //     `;
 //   }
-
-//   return `
+//     return `
 // <!DOCTYPE html>
 // <html lang="en">
 //   <head>
@@ -223,201 +281,371 @@
 // };
 
 
+// utils/emailTemplate.js
+
+// export const emailTemplate = (
+//   subject,
+//   message,
+//   userName,
+//   userEmail,
+//   userId,
+//   abstractTitle,
+//   finalPaperStatus,
+//   paymentStatus,
+//   content = {}
+// ) => {
+//   let bannerHtml = "";
+//   let dynamicContentHtml = "";
+
+//   // --------------------------
+//   // 1. Password Reset
+//   // --------------------------
+//   if (content?.resetLink) {
+//     bannerHtml = `
+//       <img src="https://cdn-icons-png.flaticon.com/512/103/103077.png" 
+//            alt="Reset Password" 
+//            style="width:100%;max-width:600px;" />
+//     `;
+//     dynamicContentHtml = `
+//       <p style="font-size:16px;">
+//         Hi ${userName || "User"},<br/><br/>
+//         You requested a password reset. Click below to reset your password:
+//       </p>
+//       <div style="text-align:center;margin:20px 0;">
+//         <a href="${content.resetLink}" 
+//            style="padding:12px 24px;background:#2563eb;color:#fff;
+//                   font-size:16px;font-weight:bold;border-radius:6px;
+//                   text-decoration:none;">
+//           🔑 Reset Password
+//         </a>
+//       </div>
+//     `;
+//   }
+
+//   // --------------------------
+//   // 2. Abstract Submission
+//   // --------------------------
+//   else if (content?.abstractStatus) {
+//     bannerHtml = `
+//       <img src="https://cdn-icons-png.flaticon.com/512/3209/3209265.png" 
+//            alt="Abstract Submission" 
+//            style="width:100%;max-width:600px;" />
+//     `;
+//     dynamicContentHtml = `
+//       <p style="font-size:16px;">
+//         Hi ${userName},<br/><br/>
+//         Your abstract titled <b>${abstractTitle}</b> has been 
+//         <b>${content.abstractStatus}</b>.
+//       </p>
+//       <p><b>Track:</b> ${content.track || "N/A"}</p>
+//       <p><b>Mode:</b> ${content.mode || "N/A"}</p>
+//     `;
+//   }
+
+//   // --------------------------
+//   // 3. Final Paper Submission
+//   // --------------------------
+//   else if (content?.finalPaperStatus) {
+//     bannerHtml = `
+//       <img src="https://cdn-icons-png.flaticon.com/512/2232/2232688.png" 
+//            alt="Final Paper" 
+//            style="width:100%;max-width:600px;" />
+//     `;
+//     dynamicContentHtml = `
+//       <p style="font-size:16px;">
+//         Hi ${userName},<br/><br/>
+//         Your final paper has been 
+//         <b>${content.finalPaperStatus}</b>.
+//       </p>
+//       ${
+//         content.paperUrl
+//           ? `<p>📄 Download: 
+//               <a href="${content.paperUrl}">${content.paperUrl}</a>
+//              </p>`
+//           : ""
+//       }
+//     `;
+//   }
+
+//   // --------------------------
+//   // 4. Payment (Paid / Rejected)
+//   // --------------------------
+//   else if (paymentStatus && ["paid", "rejected"].includes(paymentStatus.toLowerCase())) {
+//     if (paymentStatus.toLowerCase() === "rejected") {
+//       bannerHtml = `
+//         <img src="https://example.com/payment-rejected.png" 
+//              alt="Payment Rejected" 
+//              style="width:100%;max-width:600px;" />
+//       `;
+//       dynamicContentHtml = `
+//         <p style="color:#dc2626;font-size:16px;">
+//           ❌ <b>Payment Rejected</b>
+//         </p>
+//         <p><b>User:</b> ${userName}</p>
+//         <p><b>Reason:</b> ${content.reason || "Not specified"}</p>
+//       `;
+//     } else if (paymentStatus.toLowerCase() === "paid") {
+//       bannerHtml = `
+//         <img src="https://cdn-icons-png.flaticon.com/512/190/190411.png" 
+//              alt="Payment Success" 
+//              style="width:100%;max-width:600px;" />
+//       `;
+//       dynamicContentHtml = `
+//         <p style="color:#16a34a;font-size:18px;margin-top:20px;">
+//           ✅ <b>Payment Successful!</b>
+//         </p>
+//         <p><b>User:</b> ${userName}</p>
+//         <p><b>Unique ID:</b> ${content.uniqueId || "N/A"}</p>
+//         <p><b>Abstract Title:</b> ${abstractTitle || "N/A"}</p>
+//         <p><b>Final Paper Status:</b> ${finalPaperStatus || "Pending"}</p>
+//         <p><b>Payment Status:</b> Paid</p>
+//         <div style="text-align:center;margin-top:20px;">
+//           <a href="${content.hallTicketUrl || "#"}" 
+//              style="display:inline-block;padding:12px 24px;
+//                     background:#2563eb;color:#fff;
+//                     font-size:16px;font-weight:bold;
+//                     border-radius:6px;text-decoration:none;">
+//             ⬇️ Download Hall Ticket (PDF)
+//           </a>
+//         </div>
+//         ${
+//           content.qrCodeUrl
+//             ? `
+//           <div style="text-align:center;margin-top:20px;">
+//             <p>📌 Or scan this QR code at event check-in:</p>
+//             <img src="${content.qrCodeUrl}" 
+//                  alt="QR Code" 
+//                  style="max-width:200px;" />
+//           </div>`
+//             : ""
+//         }
+//       `;
+//     }
+//   }
+
+//   // --------------------------
+//   // 5. Default (Registration Confirmation)
+//   // --------------------------
+//   else {
+//     bannerHtml = `
+//       <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" 
+//            alt="Registration" 
+//            style="width:100%;max-width:600px;" />
+//     `;
+//     dynamicContentHtml = `
+//       <p style="font-size:16px;">
+//         Hi ${userName},<br/><br/>
+//         Thank you for registering for the conference. 
+//         We’ll keep you updated on your progress.
+//       </p>
+//       <p><b>Abstract:</b> ${abstractTitle || "N/A"}</p>
+//       <p><b>Status:</b> ${content.abstractStatus || "Pending"}</p>
+//     `;
+//   }
+
+//   // --------------------------
+//   // FINAL TEMPLATE
+//   // --------------------------
+//   return `
+//     <div style="font-family:Arial,sans-serif;background:#f9fafb;padding:20px;">
+//       <div style="max-width:600px;margin:0 auto;background:#fff;
+//                   border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+//         ${bannerHtml}
+//         <div style="padding:20px;">
+//           <h2 style="color:#111827;">${subject}</h2>
+//           <p>${message}</p>
+//           ${dynamicContentHtml}
+//         </div>
+//         <div style="background:#f3f4f6;padding:12px;text-align:center;
+//                     font-size:12px;color:#6b7280;">
+//           © ${new Date().getFullYear()} Conference Committee. All rights reserved.
+//         </div>
+//       </div>
+//     </div>
+//   `;
+// };
+
+
+
 export const emailTemplate = (
-  title,
+  subject,
   message,
   userName,
   userEmail,
   userId,
-  userAbstract,
+  abstractTitle,
   finalPaperStatus,
   paymentStatus,
-  content,
-  resetLink // ✅ Add reset link for password reset
+  content = {}
 ) => {
-  let bannerHtml = '';
-  let dynamicContentHtml = '';
+  let bannerHtml = "";
+  let dynamicContentHtml = "";
 
   // --------------------------
-  // Abstract rejection / status
+  // 1. Password Reset
   // --------------------------
-  if (userAbstract !== undefined && userAbstract !== null) {
-    if (userAbstract.toLowerCase() === 'rejected') {
-      bannerHtml = `<img src="https://example.com/abstract-rejected.png" alt="Abstract Rejected Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
-      dynamicContentHtml = `
-        <p style="margin-top:20px;color:#ff0000;">
-          <b>User Name:</b> ${userName}<br/>
-          <b>Abstract Status:</b> ${userAbstract} ❌<br/>
-          <b>Reason:</b> ${content || "Not specified by admin"}
-        </p>
-      `;
-    } else {
-      bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRREkO_NkGUNEj0eZnFmTtIa0q_AWsxTq1Lgw&s" alt="Abstract Status Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
-      dynamicContentHtml = `
-        <p style="margin-top:20px;">
-          <b>User Name:</b> ${userName}<br/>
-          <b>Abstract Status:</b> ${userAbstract}<br/>
-        </p>
-      `;
-    }
-  }
-
-  // --------------------------
-  // Final Paper rejection / status
-  // --------------------------
-  else if (finalPaperStatus !== undefined && finalPaperStatus !== null) {
-    if (finalPaperStatus.toLowerCase() === 'rejected') {
-      bannerHtml = `<img src="https://example.com/finalpaper-rejected.png" alt="Final Paper Rejected Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
-      dynamicContentHtml = `
-        <p style="margin-top:20px;color:#ff0000;">
-          <b>User Name:</b> ${userName}<br/>
-          <b>Final Paper Status:</b> ${finalPaperStatus} ❌<br/>
-          <b>Reason:</b> ${content}
-        </p>
-      `;
-    } else {
-      bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTLpUL9pnhkzyHQvcnP4OHZP5Qr0oAUL7A_xXt4FX0M5SO2ECFkLibK0lcLbcwbPC32Gqc&usqp=CAU" alt="Final Paper Status Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
-      dynamicContentHtml = `
-        <p style="margin-top:20px;">
-          <b>User Name:</b> ${userName}<br/>
-          <b>Final Paper Status:</b> ${finalPaperStatus}<br/>
-        </p>
-      `;
-    }
-  }
-
-  // --------------------------
-  // Payment rejection / status
-  // --------------------------
-  else if (paymentStatus !== undefined && paymentStatus !== null) {
-    if (paymentStatus.toLowerCase() === 'rejected') {
-      bannerHtml = `<img src="https://example.com/payment-rejected.png" alt="Payment Rejected Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
-      dynamicContentHtml = `
-        <p style="margin-top:20px;color:#ff0000;">
-          <b>User Name:</b> ${userName}<br/>
-          <b>Payment Status:</b> ${paymentStatus} ❌<br/>
-          <b>Reason:</b> ${content}
-        </p>
-      `;
-    } else {
-      bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQg3_vsVL7OGr6De1j8XcJmMGPZYdVxB5zEewNkNYW3RWPsj-GtNMFAdUwiyz9aWMs6ElI&usqp=CAU" alt="Payment Status Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
-      dynamicContentHtml = `
-        <p style="margin-top:20px;">
-          <b>User Name:</b> ${userName}<br/>
-          <b>Payment Status:</b> ${paymentStatus}<br/>
-        </p>
-      `;
-    }
-  }
-
-  // --------------------------
-  // Password Reset Email
-  // --------------------------
-  
-  
-  else if (resetLink) {
-    bannerHtml = `<img src="https://cdn-icons-png.flaticon.com/512/3064/3064197.png" alt="Reset Password Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
+  if (content?.resetLink) {
+    bannerHtml = `
+      <img src="https://cdn-icons-png.flaticon.com/512/103/103077.png" 
+           alt="Reset Password" 
+           style="width:100%;max-width:600px;" />
+    `;
     dynamicContentHtml = `
-      <p style="margin-top:20px;">
-        <b>User Name:</b> ${userName}<br/>
-        <b>User Email:</b> ${userEmail}<br/>
+      <p style="font-size:16px;">
+        Hi ${userName || "User"},<br/><br/>
+        You requested a password reset. Click below to reset your password:
       </p>
-      <p>You requested to reset your password. Please click the button below to set a new password:</p>
-      <div style="margin:20px 0;text-align:center;">
-        <a href="${resetLink}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;font-size:16px;font-weight:bold;border-radius:6px;text-decoration:none;">
-          Reset Password
+      <div style="text-align:center;margin:20px 0;">
+        <a href="${content.resetLink}" 
+           style="padding:12px 24px;background:#2563eb;color:#fff;
+                  font-size:16px;font-weight:bold;border-radius:6px;
+                  text-decoration:none;">
+          🔑 Reset Password
         </a>
       </div>
-      <p style="font-size:14px;color:#555;">If you did not request this, please ignore this email.</p>
     `;
   }
 
   // --------------------------
-  // Default registration email
+  // 2. Payment Status (priority before paper)
+  // --------------------------
+  else if (paymentStatus && ["paid", "rejected"].includes(paymentStatus.toLowerCase())) {
+    if (paymentStatus.toLowerCase() === "rejected") {
+      bannerHtml = `
+        <img src="https://cdn-icons-png.flaticon.com/512/1828/1828843.png" 
+             alt="Payment Rejected" 
+             style="width:100%;max-width:600px;" />
+      `;
+      dynamicContentHtml = `
+        <p style="color:#dc2626;font-size:16px;">
+          ❌ <b>Payment Rejected</b>
+        </p>
+        <p><b>User:</b> ${userName}</p>
+        <p><b>Reason:</b> ${content.reason || "Not specified"}</p>
+      `;
+    } else {
+      bannerHtml = `
+        <img src="https://cdn-icons-png.flaticon.com/512/190/190411.png" 
+             alt="Payment Success" 
+             style="width:100%;max-width:600px;" />
+      `;
+      dynamicContentHtml = `
+        <p style="color:#16a34a;font-size:18px;margin-top:20px;">
+          ✅ <b>Payment Successful!</b>
+        </p>
+        <p><b>User:</b> ${userName}</p>
+        <p><b>Unique ID:</b> ${content.uniqueId || "N/A"}</p>
+        <p><b>Abstract Title:</b> ${abstractTitle || "N/A"}</p>
+        <p><b>Final Paper Status:</b> ${finalPaperStatus || "Pending"}</p>
+        <p><b>Payment Status:</b> Paid</p>
+        <div style="text-align:center;margin-top:20px;">
+          <a href="${content.hallTicketUrl || "#"}" 
+             style="display:inline-block;padding:12px 24px;
+                    background:#2563eb;color:#fff;
+                    font-size:16px;font-weight:bold;
+                    border-radius:6px;text-decoration:none;">
+            ⬇️ Download Hall Ticket (PDF)
+          </a>
+        </div>
+        ${
+          content.qrCodeUrl
+            ? `
+          <div style="text-align:center;margin-top:20px;">
+            <p>📌 Or scan this QR code at event check-in:</p>
+            <img src="${content.qrCodeUrl}" 
+                 alt="QR Code" 
+                 style="max-width:200px;" />
+          </div>` 
+            : ""
+        }
+      `;
+    }
+  }
+
+  // --------------------------
+  // 3. Final Paper Submission
+  // --------------------------
+  else if (content?.finalPaperStatus) {
+    bannerHtml = `
+      <img src="https://cdn-icons-png.flaticon.com/512/2232/2232688.png" 
+           alt="Final Paper" 
+           style="width:100%;max-width:600px;" />
+    `;
+    dynamicContentHtml = `
+      <p style="font-size:16px;">
+        Hi ${userName},<br/><br/>
+        Your final paper has been 
+        <b>${content.finalPaperStatus}</b>.
+      </p>
+      ${
+        content.paperUrl
+          ? `<p>📄 Download: 
+              <a href="${content.paperUrl}">${content.paperUrl}</a>
+             </p>`
+          : ""
+      }
+    `;
+  }
+
+  // --------------------------
+  // 4. Abstract Submission
+  // --------------------------
+  else if (content?.abstractStatus) {
+    bannerHtml = `
+      <img src="https://cdn-icons-png.flaticon.com/512/3209/3209265.png" 
+           alt="Abstract Submission" 
+           style="width:100%;max-width:600px;" />
+    `;
+    dynamicContentHtml = `
+      <p style="font-size:16px;">
+        Hi ${userName},<br/><br/>
+        Your abstract titled <b>${abstractTitle}</b> has been 
+        <b>${content.abstractStatus}</b>.
+      </p>
+      <p><b>Track:</b> ${content.track || "N/A"}</p>
+      <p><b>Mode:</b> ${content.mode || "N/A"}</p>
+    `;
+  }
+
+  // --------------------------
+  // 5. Default Registration
   // --------------------------
   else {
-    bannerHtml = `<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ_d9ec3NpFtI-GU3xQIu8gVG6qxQH0sY18gzSC5sMMFEqmu3NqT0UyZkvtA7GKKoBamSA&usqp=CAU" alt="KSR College of Engineering Banner" style="width:100%; max-width:600px; border-radius:8px 8px 0 0;" />`;
+    bannerHtml = `
+      <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" 
+           alt="Registration" 
+           style="width:100%;max-width:600px;" />
+    `;
     dynamicContentHtml = `
-      <p style="margin-top:20px;">
-        <b>User Name:</b> ${userName}<br/>
-        <b>User Email:</b> ${userEmail}<br/>
-        <b>User ID:</b> ${userId}<br/>
-        <b>Group:</b> <a href="https://chat.whatsapp.com/FoFsX2AJZjSIxUK98pqJei?mode=ems_wa_c">Join WhatsApp Group</a>
+      <p style="font-size:16px;">
+        Hi ${userName},<br/><br/>
+        Thank you for registering for the conference. 
+        We’ll keep you updated on your progress.
       </p>
+      <p><b>Abstract:</b> ${abstractTitle || "N/A"}</p>
+      <p><b>Status:</b> ${content.abstractStatus || "Pending"}</p>
     `;
   }
 
+  // --------------------------
+  // FINAL TEMPLATE
+  // --------------------------
   return `
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>${title}</title>
-    </head>
-    <body style="margin:0;padding:0;background-color:#f4f4f4;">
-      <center>
-        <table width="100%" cellspacing="0" cellpadding="0">
-          <tr>
-            <td align="center" style="padding:20px 0;">
-              <table width="600" class="wrapper" style="max-width:600px;">
-                <tr>
-                  <td style="background:#1e3a8a;border-radius:8px 8px 0 0;">
-                    ${bannerHtml}
-                    <div style="text-align:center;padding:15px;">
-                      <h1 style="color:#fff;margin:0;">${title}</h1>
-                      <p style="color:#a3c9f7;margin:0;">Conference Portal</p>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="background:#fff;padding:30px;border-radius:0 0 8px 8px;">
-                    <h2>Hello ${userName},</h2>
-                    <p>${message}</p>
-                    ${dynamicContentHtml}
-                  </td>
-                </tr>
-               <tr>
-  <td align="center" style="padding: 20px 0;">
-    <table border="0" cellpadding="0" cellspacing="0" width="100%">
-      <tr>
-        <td align="center" style="font-family: Arial, sans-serif; font-size: 14px; color: #888888;">
-          <!-- 📞 Contact info -->
-          <p style="margin: 5px 0;">
-            📞 +91 88702 95336 | 📧 ksritconference@gmail.com
-          </p>
-
-          <!-- 🌐 Social icons -->
-          <div style="margin: 15px 0;">
-            <a href="https://www.linkedin.com/company/ksrce?originalSubdomain=in" target="_blank" style="margin: 0 10px;">
-              <img src="data:image/png;base64,...." alt="LinkedIn" width="36" style="display:inline-block; vertical-align:middle;">
-            </a>
-            <a href="https://wa.me/918870295336" target="_blank" style="margin: 0 10px;">
-              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-jy74DqQgjct3lvMoc5kKvKBoze3zt4Haiw&s" alt="WhatsApp" width="36" style="display:inline-block; vertical-align:middle;">
-            </a>
-            <a href="mailto:ksritconference@gmail.com" style="margin: 0 10px;">
-              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSeeceiZtze55yNLLKmme9KuPcPqt9TXSyr5w&s" alt="Email" width="36" style="display:inline-block; vertical-align:middle;">
-            </a>
-            <a href="https://ksrce.ac.in/" target="_blank" style="margin: 0 10px;">
-              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSEHfmd0qwHhVjUHnObfu-1clz_qsPTDSkCmA&s" alt="Website" width="36" style="display:inline-block; vertical-align:middle;">
-            </a>
-          </div>
-
-          <!-- 📌 Copyright -->
-          <p style="margin-top: 15px; font-size: 12px; color: #aaaaaa;">
-            © ${new Date().getFullYear()} Conference Portal. All rights reserved.
-          </p>
-        </td>
-      </tr>
-    </table>
-  </td>
-</tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </center>
-    </body>
-  </html>
+    <div style="font-family:Arial,sans-serif;background:#f9fafb;padding:20px;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;
+                  border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        ${bannerHtml}
+        <div style="padding:20px;">
+          <h2 style="color:#111827;">${subject}</h2>
+          <p>${message}</p>
+          ${dynamicContentHtml}
+        </div>
+        <div style="background:#f3f4f6;padding:12px;text-align:center;
+                    font-size:12px;color:#6b7280;">
+          © ${new Date().getFullYear()} Conference Committee. All rights reserved.
+        </div>
+      </div>
+    </div>
   `;
 };
+

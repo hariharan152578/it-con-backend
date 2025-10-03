@@ -1,9 +1,14 @@
 import jwt from "jsonwebtoken";
 import asyncHandler from "express-async-handler";
 import Admin from "../models/adminModel.js";
+// ✅ Generate Token (global)
 export const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: `${process.env.JWT_EXPIRES}`,
+  });
 };
+
+
 
 
 // export const authRequest = (req, res, next) => {
