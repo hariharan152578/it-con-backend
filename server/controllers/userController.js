@@ -93,7 +93,9 @@ export const getMe = asyncHandler(async (req, res) => {
   const abstractStatus=await AbstractStatus.findOne({userId:user._id})
   res.json({
     _id: user._id,
+    
     name: user.name,
+    userId: user.userId,
     email: user.email,
     mobileno: user.mobileno,
     discount:abstractStatus ? abstractStatus.discount : false,
