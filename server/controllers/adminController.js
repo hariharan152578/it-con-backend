@@ -1,3 +1,5 @@
+
+
 import asyncHandler from "express-async-handler";
 import Admin from "../models/adminModel.js";
 import User from "../models/userModel.js";
@@ -5,8 +7,13 @@ import AbstractStatus from "../models/abstractStatusModel.js";
 import Registration from "../models/registerModel.js";
 import { generateToken } from "../middleware/authMiddleware.js";
 import { sendEmail } from "../config/email.js";
-import { emailTemplate } from "../config/emailTemplate.js";
-// Register Admin
+import emailTemplate from "../config/emailTemplate.js";
+import {saveFileLocally}  from "../config/filehelper.js";
+import { countryCodes,inrToCurrency } from "../config/payment.js";
+
+// --------------------------
+// Admin Registration
+// --------------------------
 export const registerAdmin = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -19,15 +26,16 @@ export const registerAdmin = asyncHandler(async (req, res) => {
       _id: admin._id,
       name: admin.name,
       email: admin.email,
-      role:admin.role,
+      role: admin.role,
     });
   } else {
     res.status(400).json({ message: "Invalid admin data" });
   }
 });
 
-
-// Login Admin
+// --------------------------
+// Admin Login
+// --------------------------
 export const loginAdmin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const admin = await Admin.findOne({ email });
@@ -44,73 +52,33 @@ export const loginAdmin = asyncHandler(async (req, res) => {
   }
 });
 
-
-// Get all users
+// --------------------------
+// Get All Users
+// --------------------------
 export const getAllUsers = asyncHandler(async (req, res) => {
   const users = await User.find().select("-password");
 
-  // Use Promise.all to fetch related data for each user
   const userData = await Promise.all(
     users.map(async (user) => {
       const registration = await Registration.findOne({ userId: user._id });
       const abstractStatus = await AbstractStatus.findOne({ userId: user._id });
 
       return {
-        // 🔹 User basic details
         _id: user._id,
         userId: user.userId,
         name: user.name,
-        email:user.email,
-        mobileno:user.mobileno,
+        email: user.email,
+        mobileno: user.mobileno,
 
-        // 🔹 Registration Details
-    registration: registration
-      ? {
-          _id: registration._id,
-          uniqueId: registration.uniqueId,
-          participants: registration.participants,
-          country: registration.country,
-          pincode:registration.pincode,
-          track: registration.track,
-          presentationMode: registration.presentationMode,
-          abstractTitle: registration.abstractTitle,
-          abstractContent:registration.abstractContent,
-          proofUrl: registration.proofUrl,
-          paperUrl: registration.paperUrl,
-          abstractExpression:registration.abstractExpression,
-          address:registration.address,
-        }
-      : null,
+        registration: registration || null,
 
-    // 🔹 Workflow Status (Abstract / Paper / Payment)
-    workflow: abstractStatus
-      ? {
-          abstractStatus: abstractStatus.abstractStatus,
-          abstractApprovedBy: abstractStatus.abstractApprovedBy,
-
-          rejectedReason: abstractStatus.rejectedReason,
-          abstractreasonBy: abstractStatus.abstractreasonBy,
-
-          paperStatus: abstractStatus.paperStatus,
-          paperApprovedBy: abstractStatus.paperApprovedBy,
-
-          discount:abstractStatus.discount,
-
-          paymentStatus: abstractStatus.paymentStatus,
-          paymentApprovedBy: abstractStatus.paymentApprovedBy,
-          paymentMethod:abstractStatus.paymentMethod,
-          amountPaid:abstractStatus.amountPaid,
-          paymentDate:abstractStatus.paymentDate,
-          transactionId:abstractStatus.transactionId,
-
-          createdAt: abstractStatus.createdAt,
-          updatedAt: abstractStatus.updatedAt,
-        }
-      : {
-          abstractStatus: "No Abstract",
-          paperStatus: "No Paper",
-          paymentStatus: "unpaid",
-        },
+        workflow: abstractStatus
+          ? abstractStatus
+          : {
+              abstractStatus: "No Abstract",
+              paperStatus: "No Paper",
+              paymentStatus: "unpaid",
+            },
       };
     })
   );
@@ -118,62 +86,86 @@ export const getAllUsers = asyncHandler(async (req, res) => {
   res.json(userData);
 });
 
-// Update User Approval Workflow
-export const updateUserApproval = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { abstractStatus, rejectedReason, discount } = req.body;
+export const updateAbstractAndPaper = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const {
+      abstractStatus,
+      abstractrejectedReason,
+      paperrejectedReason,
+      discount,
+      paperAction,
+    } = req.body;
+    const file = req.file;
 
-  // 1️⃣ Fetch the status record
-  const status = await AbstractStatus.findOne({ userId: id }).populate(
-    "userId",
-    "name email userId"
-  );
-  if (!status) return res.status(404).json({ message: "Status record not found" });
-
-  const user = status.userId;
-
-  // --------------------------
-  // Abstract workflow
-  // --------------------------
-  if (abstractStatus) {
-    const normalizedStatus =
-      abstractStatus.charAt(0).toUpperCase() + abstractStatus.slice(1).toLowerCase(); // e.g. "Approved"
-
-    status.abstractStatus = normalizedStatus;
-    status.abstractApprovedBy = req.user._id;
-
-    // Update User collection
-    await User.findByIdAndUpdate(id, { abstractStatus: normalizedStatus });
-
-    if (normalizedStatus === "Rejected") {
-      status.rejectedReason = rejectedReason || "Paper Rejected";
-      status.discount = false;
-      status.paperStatus = "No Paper";
-      status.paymentStatus = "Unpaid";
-
-      await User.findByIdAndUpdate(id, {
-        paperStatus: "No Paper",
-        paymentStatus: "Unpaid",
-      });
+    // ---------------- Fetch Records ----------------
+    const user = await User.findById(userId);
+    // console.log(user);
+    
+    if (!user) return res.status(404).json({ message: "User not found" });
+   const abstractStatusRecord = await AbstractStatus.findOne({ userId });
+    if (!abstractStatusRecord) {
+      return res.status(404).json({ message: "Abstract status record not found" });
     }
+   
+    
+    const registration =
+      (await Registration.findOne({ userId })) ||
+      new Registration({ userId, uniqueId: user.userId });
+    const status =
+      (await AbstractStatus.findOne({ userId })) ||
+      new AbstractStatus({ userId });
 
-    if (normalizedStatus === "Approved") {
-      status.rejectedReason = null;
-      status.discount = discount === true || discount === "true"; // handle string or boolean
-    }
+    // =====================================================
+    // 🧾 ABSTRACT STATUS UPDATE
+    // =====================================================
+    if (abstractStatus) {
+      const normalizedStatus =
+        abstractStatus.charAt(0).toUpperCase() +
+        abstractStatus.slice(1).toLowerCase();
 
-    // --------------------------
-    // Email notification
-    // --------------------------
-    if (user?.email) {
+      status.abstractStatus = normalizedStatus;
+      status.abstractApprovedBy = req.user._id;
+
+      await Promise.all([
+        User.findByIdAndUpdate(userId, { abstractStatus: normalizedStatus }),
+        Registration.findOneAndUpdate({ userId }, { abstractStatus: normalizedStatus }),
+      ]);
+
+      // Rejected Abstract
+      if (normalizedStatus === "Rejected") {
+        status.abstractrejectedReason = abstractrejectedReason || "Abstract Rejected";
+        status.paperStatus = "No Paper";
+        status.paymentStatus = "Unpaid";
+
+        await Promise.all([
+          User.findByIdAndUpdate(userId, {
+            paperStatus: "No Paper",
+            paymentStatus: "unpaid",
+          }),
+          Registration.findOneAndUpdate(
+            { userId },
+            { paperStatus: "No Paper", paymentStatus: "unpaid" }
+          ),
+        ]);
+      }
+
+      // Approved Abstract
+      if (normalizedStatus === "Approved") {
+        status.abstractrejectedReason = null;
+      }
+
+ 
+// --- Send Abstract Email ---
+
+ if (user?.email) {
       let subject, message;
 
       if (normalizedStatus === "Rejected") {
         subject = `Abstract ${normalizedStatus} ❌`;
         message = `
           We regret to inform you that your abstract has been <b>${normalizedStatus}</b>.<br/><br/>
-          <i>Reason: ${status.rejectedReason}</i><br/><br/>
-          Please review the guidelines and resubmit your abstract if possible.
+          <i>Reason: ${status.abstractrejectedReason}</i><br/><br/>.
         `;
       } else if (normalizedStatus === "Approved") {
         subject = `Abstract ${normalizedStatus} ✅`;
@@ -186,32 +178,245 @@ export const updateUserApproval = asyncHandler(async (req, res) => {
         message = `Your abstract status has been updated to <b>${normalizedStatus}</b>.`;
       }
 
-      // Prepare safe userData object
-      const emailUserData = {
-        abstractStatus: status.abstractStatus || "No Abstract",
-        rejectedReason: status.rejectedReason || "",
-        paperStatus: status.paperStatus || "No Paper",
-        paymentStatus: status.paymentStatus || "Unpaid",
-        discount: status.discount ?? false,
-      };
-
+     
       await sendEmail({
         to: user.email,
         subject,
-        text: `Hello ${user.name}, ${message.replace(/<[^>]+>/g, "")}`,
         html: emailTemplate(
-          subject,
-          message,
-          user.name,
-          user.email,
-          user.userId,
-          emailUserData
+        
+  subject,               // title
+    message,               // message
+    user.name,             // userName
+    user.email,            // userEmail
+    user.userId,           // userId
+    normalizedStatus,      // userAbstract ✅
+    undefined,             // finalPaperStatus
+    undefined,             // paymentStatus
+   status.abstractrejectedReason, // rejectedReason ✅
+    undefined              // resetLink
+          
         ),
       });
     }
+      await status.save();
+    
+  }
+    // =====================================================
+    // 📄 PAPER STATUS UPDATE
+    // =====================================================
+    if (paperAction) {
+      const normalizedStatus =
+        paperAction.toLowerCase() === "correction required"
+          ? "Correction Required"
+          : paperAction.charAt(0).toUpperCase() + paperAction.slice(1).toLowerCase();
 
-    await status.save();
+      status.paperStatus = normalizedStatus;
+      status.paperReviewedBy = req.user._id;
+      status.paperReviewDate = new Date();
+
+      // Update User & Registration
+      await Promise.all([
+        User.findByIdAndUpdate(userId, { paperStatus: normalizedStatus }),
+        Registration.findOneAndUpdate({ userId }, { paperStatus: normalizedStatus }),
+      ]);
+
+      // === CASE 1: REJECTED ===
+      if (normalizedStatus === "Rejected") {
+        status.paperrejectedReason = paperrejectedReason || "Paper Rejected";
+        status.paymentStatus = "Unpaid";
+        status.discount = false;
+
+        await Promise.all([
+          User.findByIdAndUpdate(userId, { paymentStatus: "unpaid" }),
+          Registration.findOneAndUpdate({ userId }, { paymentStatus: "unpaid" }),
+        ]);
+      }
+
+      // === CASE 2: APPROVED ===
+   
+else if (normalizedStatus === "Approved") {
+  status.paperrejectedReason = null;
+  status.discount = discount ?? false;
+
+  // ✅ Find registration & user
+  const registration = await Registration.findOne({ userId: user._id });
+  if (!registration) throw new Error("Registration not found");
+
+  const mainParticipant = registration.participants?.[0];
+  const role = mainParticipant?.designation?.toLowerCase();
+  const mobilecode = user.mobilenocountrycode || "+91";
+  const currency = countryCodes[mobilecode] || "INR";
+  const amount=registration.payment.amountPaid || 0;
+  const amountconvert=registration.payment.convertedAmount || 0;
+  const isEarly=abstractStatusRecord.earlyBirdDiscount || false;
+  console.log(amount,isEarly);
+  
+  // ------------------ Base Amount ------------------
+  let baseAmountInINR = 0;
+  
+  if (isEarly) {
+    switch (role) {
+      case "student":
+        baseAmountInINR = parseInt(process.env.EARLY_STUDENT, 10);
+        break;
+      case "researcher":
+        baseAmountInINR = parseInt(process.env.EARLY_RESEARCHER, 10);
+        break;
+      case "faculty":
+        baseAmountInINR = parseInt(process.env.EARLY_FACULTY, 10);
+        break;
+      case "industry":
+        baseAmountInINR = parseInt(process.env.EARLY_INDUSTRY, 10);
+        break;
+      default:
+        baseAmountInINR = 0;
+    }
+  } else {
+    switch (role)  {
+    case "student":
+      baseAmountInINR = status.discount
+        ? parseInt(process.env.DISCOUNTED_STUDENT_AMOUNT, 10)
+        : parseInt(process.env.AMOUNT_STUDENT, 10);
+      break;
+    case "researcher":
+      baseAmountInINR = parseInt(process.env.AMOUNT_RESEARCHER, 10);
+      break;
+    case "faculty":
+      baseAmountInINR = parseInt(process.env.AMOUNT_FACULTY, 10);
+      break;
+    case "industry":
+      baseAmountInINR = parseInt(process.env.AMOUNT_INDUSTRY, 10);
+      break;
+    default:
+      baseAmountInINR = 0;
+  }
+  }
+  // ------------------ Convert to user currency ------------------
+  console.log(baseAmountInINR);
+  
+ const convertedAmount = parseFloat((baseAmountInINR * inrToCurrency[mobilecode]).toFixed(2));
+
+  console.log(`💰 Base INR: ${baseAmountInINR} → Converted: ${convertedAmount}`);
+
+  console.log(`💰 Base INR: ${baseAmountInINR} → Converted: ${convertedAmount} ${currency}`);
+
+  // ------------------ Update registration payment info ------------------
+registration.payment.amountPaid = 
+  registration.payment.amountPaid && registration.payment.amountPaid !== 0
+    ? registration.payment.amountPaid
+    : baseAmountInINR;
+  registration.payment.convertedAmount && registration.payment.convertedAmount !== 0
+    ? registration.payment.convertedAmount
+    : convertedAmount;
+  registration.payment.currency = currency;
+  registration.payment.paymentStatus = "unpaid";
+  registration.payment.paymentMethod = "razorpay";
+  registration.payment.paymentDate = null;
+
+  await registration.save();
+
+  console.log(`✅ Fee set for ${role}: ₹${baseAmountInINR} (${currency} ${convertedAmount})`);
+}
+      // === CASE 3: CORRECTION REQUIRED ===
+else if (normalizedStatus === "Correction Required") {
+  if (!file) {
+    return res.status(400).json({ message: "Correction file required" });
   }
 
-  res.json(status);
-});
+  // ✅ Save correction file locally
+  const correctedUrl = saveFileLocally("corrected", file, `corrected_${userId}`);
+
+  // ✅ Update status fields
+  status.correctedPaperUrl = correctedUrl;
+  status.paperrejectedReason = paperrejectedReason || "Requires correction";
+  status.paymentStatus = "unpaid";
+  status.correctionsRequested = (status.correctionsRequested || 0) + 1;
+  status.discount = false;
+  status.paperStatus = "Correction Required";
+
+  // ✅ Update User and Registration models
+  await Promise.all([
+    // Update User
+    User.findByIdAndUpdate(
+      userId,
+      {
+        paperStatus: "Correction Required", // explicitly set normalized value
+        paymentStatus: "Unpaid",            // reset payment for resubmission
+      },
+      { new: true }
+    ),
+
+    // Update Registration
+    Registration.findOneAndUpdate(
+      { userId },
+      {
+        correctedPaperUrl: correctedUrl,
+        "payment.paymentStatus": "unpaid", // update nested payment field
+        paperStatus: "Correction Required", // keep consistent with user
+      },
+      { new: true }
+    ),
+  ]);
+
+  console.log(`📄 Correction uploaded for User: ${userId}`);
+}
+
+      // --- Save all updates ---
+      await Promise.all([status.save(), registration.save()]);
+
+      // --- Send Paper Email ---
+      if (user.email) {
+        let subject, message;
+        if (normalizedStatus === "Rejected") {
+          subject = `Paper ${normalizedStatus} ❌`;
+          message = `Your paper has been <b>${normalizedStatus}</b>. Reason: ${status.paperrejectedReason}`;
+        } else if (normalizedStatus === "Approved") {
+          subject = `Paper ${normalizedStatus} ✅`;
+          message = `Your paper has been <b>${normalizedStatus}</b>. Congratulations!`;
+        } else {
+          subject = `Paper ${normalizedStatus}`;
+          message = `Your paper status has been updated to <b>${normalizedStatus}</b>.`;
+        }
+
+        
+      await sendEmail({
+        to: user.email,
+        subject,
+        html: emailTemplate(
+        
+  subject,               // title
+    message,               // message
+    user.name,             // userName
+    user.email,            // userEmail
+    user.userId,
+    undefined,           // userId
+    normalizedStatus,      // userAbstract ✅            // finalPaperStatus
+    undefined,             // paymentStatus
+    status.paperrejectedReason, // rejectedReason ✅
+    undefined              // resetLink
+          
+        ),
+      });
+      }
+
+      return res.json({
+        success: true,
+        message: `Paper status updated to ${normalizedStatus}`,
+        discountApplied: status.discount || false,
+      });
+    }
+
+    // =====================================================
+    // ✅ FINAL RESPONSE
+    // =====================================================
+    res.json({
+      success: true,
+      message: "User abstract/paper updated successfully",
+      abstractStatus: status.abstractStatus,
+      paperStatus: registration?.paperStatus,
+    });
+  }catch (error) {
+    console.error("❌ Admin Update Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+}

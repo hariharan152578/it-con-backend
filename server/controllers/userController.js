@@ -1,35 +1,42 @@
+
+
+
 import asyncHandler from "express-async-handler";
 import crypto from "crypto";
 import validator from "validator";
 import User from "../models/userModel.js";
 import Registration from "../models/registerModel.js";
-import AbstractStatus from "../models/abstractStatusModel.js"
+import AbstractStatus from "../models/abstractStatusModel.js";
 import { generateToken } from "../middleware/authMiddleware.js";
 import { sendEmail } from "../config/email.js";
-import { emailTemplate } from "../config/emailTemplate.js";
+import emailTemplate from "../config/emailTemplate.js";
+import {countryCodeMap} from "../config/payment.js";
+
+
 
 // ----------------------------
 // Register User
 // ----------------------------
 export const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, mobileno } = req.body;
+  const { name, email, password, mobilenocountrycode, mobileno } = req.body;
 
-  // Check existing email/mobile
-  if (await User.findOne({ email })) {
-    return res.status(400).json({ message: "Email already exists" });
-  }
-  if (await User.findOne({ mobileno })) {
-    return res.status(400).json({ message: "Mobile number already exists" });
-  }
+  if (!validator.isEmail(email)) return res.status(400).json({ message: "Invalid email" });
 
-  // Validate email format
-  if (!validator.isEmail(email)) {
-    return res.status(400).json({ message: "Please enter a valid email" });
-  }
+  if (await User.findOne({ email })) return res.status(400).json({ message: "Email already exists" });
+  if (await User.findOne({ mobileno })) return res.status(400).json({ message: "Mobile number already exists" });
 
-  // Create user
-  const user = await User.create({ name, email, password, mobileno });
-  if (!user) return res.status(400).json({ message: "Invalid user data" });
+  // Combine country code + number
+const fullNumber = `${mobilenocountrycode}${mobileno}`;
+let countryName = countryCodeMap[mobilenocountrycode] || "Unknown";
+
+  const user = await User.create({
+    name,
+    email,
+    password,
+    mobilenocountrycode,
+    mobileno,
+    country: countryName,
+  });
 
   // Send welcome email
   await sendEmail({
@@ -37,10 +44,8 @@ export const registerUser = asyncHandler(async (req, res) => {
     subject: "Welcome to the Conference! 🎉",
     html: emailTemplate(
       "Welcome to the Conference 🎉",
-      `
-        <p>Your account has been created successfully. Welcome aboard!</p>
-        <p>We're excited to have you as part of our community. Please keep your user details safe.</p>
-      `,
+      `<p>Hello ${user.name}, your account has been created successfully!</p>
+       <p>Detected Country: <b>${countryName}</b></p>`,
       user.name,
       user.email,
       user.userId
@@ -53,6 +58,8 @@ export const registerUser = asyncHandler(async (req, res) => {
     name: user.name,
     email: user.email,
     mobileno: user.mobileno,
+    mobilenocountrycode: user.mobilenocountrycode,
+    country: user.country,
   });
 });
 
@@ -61,14 +68,11 @@ export const registerUser = asyncHandler(async (req, res) => {
 // ----------------------------
 export const loginUser = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
-
-  // Find by email, mobile, or userId
   const user = await User.findOne({
     $or: [{ email: username }, { mobileno: username }, { userId: username }],
   });
   if (!user) return res.status(404).json({ message: "Invalid username" });
 
-  // Check password
   if (!(await user.matchPassword(password))) {
     return res.status(401).json({ message: "Invalid password" });
   }
@@ -81,63 +85,40 @@ export const loginUser = asyncHandler(async (req, res) => {
 });
 
 // ----------------------------
-// Get Profile (Me)
-// ----------------------------
-export const getMe = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user.id).select("-password");
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
-  }
-
-  const registration = await Registration.findOne({ userId: user._id });
-  const abstractStatus=await AbstractStatus.findOne({userId:user._id})
-  res.json({
-    _id: user._id,
-    
-    name: user.name,
-    userId: user.userId,
-    email: user.email,
-    mobileno: user.mobileno,
-    discount:abstractStatus ? abstractStatus.discount : false,
-    abstractStatus: registration?user.abstractStatus : "No Abstract",
-    paperStatus:registration? user.paperStatus : "No Paper",
-    paymentStatus:registration?user.paymentStatus: "Unpaid",
-    participants: registration ? registration.participants : [],
-    presentationMode: registration ? registration.presentationMode : "Not specified",
-  });
-});
-
-// ----------------------------
-// Request OTP for Password Reset
+// Request Password OTP
 // ----------------------------
 export const requestPasswordOtp = asyncHandler(async (req, res) => {
   const { email } = req.body;
-
   const user = await User.findOne({ email });
+  console.log(user);
+  
   if (!user) return res.status(404).json({ message: "User not found" });
 
-  // Generate 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-  // Hash OTP before saving
   const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
+
   user.resetPasswordToken = otpHash;
-  user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+  user.resetPasswordExpire = Date.now() + 1 * 60 * 1000; // 10 min
   await user.save();
-
-  // Send OTP via email
   await sendEmail({
-    to: user.email,
-    subject: "Password Reset OTP",
-    html: `
-      <h2>Password Reset Request</h2>
-      <p>Hello ${user.name || user.email},</p>
-      <p>Your OTP to reset your password is:</p>
-      <h3 style="color:#2563eb;">${otp}</h3>
-      <p>This OTP is valid for 10 minutes.</p>
-    `,
-  });
+  to: user.email,
+  subject: "🔐 Your OTP Code",
+  html:emailTemplate(
+    "OTP Verification",                        // title
+    `<p>Hello ${user.name},</p>
+     <p>Please use the following OTP to verify your action:</p>
 
+     <p>This OTP is valid for 1 minutes.</p>`, // message/body
+    user.name,                                 // userName
+    user.email,                                // userEmail
+    user.userId,                               // userId
+    undefined,                                 // userAbstract
+    undefined,                                 // finalPaperStatus
+    undefined,                                 // paymentStatus
+    undefined, 
+    otp
+  )
+  });
   res.json({ message: "OTP sent to email" });
 });
 
@@ -146,17 +127,13 @@ export const requestPasswordOtp = asyncHandler(async (req, res) => {
 // ----------------------------
 export const verifyOtp = asyncHandler(async (req, res) => {
   const { email, otp, newPassword } = req.body;
+   const useremail = await User.findOne({ email });
+  if (!useremail) return res.status(404).json({ message: "User not found" });
 
-  if (!email || !otp || !newPassword) {
+  if (!email || !otp || !newPassword)
     return res.status(400).json({ message: "email, otp and newPassword are required" });
-  }
-
-  if (!/^\d{6}$/.test(otp)) {
-    return res.status(400).json({ message: "OTP must be a 6-digit number" });
-  }
 
   const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
-
   const user = await User.findOne({
     email,
     resetPasswordToken: otpHash,
@@ -167,25 +144,64 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   user.password = newPassword;
   user.resetPasswordToken = undefined;
   user.resetPasswordExpire = undefined;
-
   await user.save();
 
   await sendEmail({
-    to: user.email,
-    subject: "Password Changed",
-    html: `
-      <h2>Password Changed</h2>
-      <p>Hello ${user.name || user.email},</p>
-      <p>Your password was changed successfully. If this wasn’t you, please contact support immediately.</p>
-    `,
+   to: user.email,
+  subject: "Password Changed ✅",
+  html: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; background-color: #f9f9f9; border-radius: 10px; overflow: hidden;">
+      <div style="background-color: #2563eb; color: white; padding: 15px 20px; text-align: center;">
+        <h2>Password Changed Successfully</h2>
+      </div>
+      <div style="padding: 20px; color: #333;">
+        <p>Hello <b>${user.name}</b>,</p>
+        <p>Your password has been updated successfully.</p>
+        <p>If you did not perform this action, please contact our support team immediately.</p>
+      </div>
+      <div style="background-color: #eee; padding: 10px; text-align: center; font-size: 12px; color: #666;">
+        <p>© ${new Date().getFullYear()} Conference Team</p>
+      </div>
+    </div>
+  `,
   });
 
   res.status(200).json({ message: "Password updated successfully" });
 });
 
-// ----------------------------
-// Logout
-// ----------------------------
+
+
+export const getMe = asyncHandler(async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const registration = await Registration.findOne({ userId: user._id });
+    const abstractStatus = await AbstractStatus.findOne({ userId: user._id });
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      mobileno: user.mobileno,
+      discount: abstractStatus ? abstractStatus.discount : false,
+      abstractStatus: registration ? user.abstractStatus : "No Abstract",
+      paperStatus: registration ? user.paperStatus : "No Paper",
+      paymentStatus: registration ? user.paymentStatus : "Unpaid",
+      participants: registration ? registration.participants : [],
+      presentationMode: registration ? registration.presentationMode : "Not specified",
+      accommodation:registration?registration.accommodation:"False"
+    });
+  } catch (error) {
+    console.error("Get Profile Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 export const logoutUser = asyncHandler(async (req, res) => {
-  res.json({ message: "User logged out successfully" });
+  try {
+    res.json({ message: "User logged out successfully" });
+  } catch (error) {
+    console.error("Logout Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 });

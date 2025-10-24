@@ -1,192 +1,208 @@
-import asyncHandler from "express-async-handler";
-import jwt from "jsonwebtoken";
-import QRCode from "qrcode";
+
+
+
+// controllers/paymentController.js
+import crypto from "crypto";
+import { razorpay, countryCodes,inrToCurrency } from "../config/payment.js";
 import Registration from "../models/registerModel.js";
 import User from "../models/userModel.js";
-import { sendEmail } from "../config/email.js";
 import AbstractStatus from "../models/abstractStatusModel.js";
-import { emailTemplate } from "../config/emailTemplate.js";
-import PDFDocument from "pdfkit";
-// Create Order (dynamic)
-export const createOrder = asyncHandler(async (req, res) => {
-  const { userId, amount, currency } = req.query;
+import {sendEmail} from "../config/email.js";
+import emailTemplate from "../config/emailTemplate.js";
 
-  if (!userId || !amount || !currency) {
-    return res.status(400).json({ message: "Missing userId, amount, or currency" });
-  }
 
-  const registration = await Registration.findOne({ userId });
-  if (!registration) return res.status(404).json({ message: "Registration not found" });
-
-  const transactionId = `TXN_${userId}_${Date.now()}`;
-
-  // Save transaction info
-  registration.payment.transactionId = transactionId;
-  registration.payment.amountPaid = Number(amount);
-  registration.payment.currency = currency;
-  registration.payment.paymentStatus = "unpaid";
-  await registration.save();
-
-  res.json({
-    success: true,
-    message: "Order created successfully",
-    transactionId,
-    amount,
-    currency,
-    redirectUrl: `/api/payments/complete-payment?userId=${userId}&transactionId=${transactionId}`,
-  });
-});
-
-// Complete Payment
-export const completePayment = asyncHandler(async (req, res) => {
-  const { userId, transactionId } = req.query;
-
-  if (!userId || !transactionId) {
-    return res.status(400).json({ message: "Missing userId or transactionId" });
-  }
-
-  // ✅ Find registration
-  const registration = await Registration.findOne({
-    userId,
-    "payment.transactionId": transactionId,
-  });
-  if (!registration) {
-    return res.status(404).json({ message: "Registration not found" });
-  }
-
-  // ✅ Mark as paid
-  registration.payment.paymentStatus = "paid";
-  registration.payment.paymentDate = new Date();
-  await registration.save();
-
-  // ✅ Update User collection
-  await User.findByIdAndUpdate(
-    userId,
-    {
-      paymentStatus: "Paid",
-      paperStatus: registration.finalPaperStatus || "No Paper",
-    },
-    { new: true }
-  );
-
-  // ✅ Update AbstractStatus collection
-  await AbstractStatus.findOneAndUpdate(
-    { userId },
-    {
-      abstractStatus: registration.abstractStatus || "Submitted",
-      finalPaperStatus: registration.finalPaperStatus || "Pending",
-      paymentStatus: "Paid",
-      rejectedReason: null,
-    },
-    { new: true, upsert: true }
-  );
-
-  const user = await User.findById(userId);
-
-  // ✅ Generate hall ticket token
-  const hallTicketToken = jwt.sign(
-    {
-      userId,
-      uniqueId: registration.uniqueId,
-      name: registration.participants[0]?.name,
-      email: registration.participants[0]?.email,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES || "7d" }
-  );
-
-  const hallTicketUrl = `${process.env.CLIENT_ORIGIN}/api/pdf/download-hall-ticket/${hallTicketToken}`;
-
-  // ✅ Generate QR code for hall ticket
-  const qrCodeUrl = await QRCode.toDataURL(hallTicketUrl);
-
-  // ✅ Send confirmation email with QR code
-  if (user?.email) {
-    const htmlContent = emailTemplate(
-      "Payment Successful 🎉",
-      "Your payment was successful. Download your hall ticket below:",
-      registration.participants[0]?.name,
-      registration.participants[0]?.email,
-      userId,
-      registration.abstractTitle,
-      registration.finalPaperStatus,
-      "Paid",
-      {
-        uniqueId: registration.uniqueId,
-        hallTicketUrl,
-        qrCodeUrl, // 🚀 Make sure this gets passed
-      }
-    );
-
-    try {
-      await sendEmail({
-        to: user.email,
-        subject: "Conference Payment Successful",
-        text: `Download your hall ticket here: ${hallTicketUrl}`,
-        html: htmlContent,
-      });
-      console.log("✅ Payment confirmation email sent to:", user.email);
-    } catch (err) {
-      console.error("❌ Email sending failed:", err.message);
-    }
-  }
-
-  res.json({
-    message: "Payment completed successfully. Hall ticket email sent.",
-    hallTicketUrl,
-    qrCodeUrl,
-  });
-});
-
-// /**
-//  * Download PDF Hall Ticket
-export const downloadHallTicket = asyncHandler(async (req, res) => {
-  const { token } = req.params;
-
+export const createRazorpayOrder = async (req, res) => {
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = req.user.id;
 
-    const doc = new PDFDocument({ margin: 50 });
-    res.setHeader("Content-Disposition", "attachment; filename=hall_ticket.pdf");
-    res.setHeader("Content-Type", "application/pdf");
-    doc.pipe(res);
+    // ✅ Fetch registration
+    const registration = await Registration.findOne({ userId });
+    if (!registration)
+      return res.status(404).json({ message: "Registration not found" });
+   const userstatus= await User.findById(userId);
+  //  console.log(userstatus);
+   
+   
+   if(userstatus.paperStatus!=="Approved"){
+    return res.status(400).json({ message: "Paper not Approved by admin" });
+   }
+    // ✅ Base amount in INR
+    const amountInINR = registration.payment?.amountPaid;
+    if (!amountInINR || amountInINR <= 0)
+      return res
+        .status(400)
+        .json({ message: "Amount not set. Please wait for admin approval." });
 
-    // Header
-    doc.fontSize(22).fillColor("#1e3a8a").text("🎟 Conference Hall Ticket", {
-      align: "center",
-    });
-    doc.moveDown();
+    // ✅ User info
+    const user = await User.findById(userId);
+    const mobileCode = user?.mobilenocountrycode || "+91";
+    const currency = countryCodes[mobileCode] || "INR";
 
-    // User Info
-    doc.fontSize(14).fillColor("black");
-    doc.text(`Unique ID: ${payload.uniqueId}`);
-    doc.text(`Name: ${payload.name}`);
-    doc.text(`Organization: ${payload.organization}`);
-    doc.text(`Email: ${payload.email}`);
-    doc.text(`Abstract Title: ${payload.abstractTitle}`);
-    doc.text(`Mode: ${payload.mode}`);
-    doc.text(`Track: ${payload.track}`);
-    doc.moveDown();
-
-    // Status
-    doc.fontSize(14).text("📌 Statuses:");
-    doc.text(`- Payment Status: ${payload.paymentStatus}`);
-    doc.text(`- Abstract Status: ${payload.abstractStatus}`);
-    doc.text(`- Final Paper Status: ${payload.finalPaperStatus}`);
-    doc.text(`- Accommodation: ${payload.accommodation}`);
-    doc.moveDown();
-
-    // Footer
-    doc.moveDown(2);
-    doc.fontSize(10).fillColor("gray").text(
-      "© Conference Portal | Contact: ksritconference@gmail.com",
-      { align: "center" }
+    // ✅ Convert amount to user currency & smallest unit
+    const convertedAmount =
+      currency === "INR"
+        ? Math.round(amountInINR * 100) // paise
+        : Math.round(amountInINR * inrToCurrency[mobileCode] * 100); // cents
+    
+    console.log(
+      `💰 Base INR: ${amountInINR} → Converted: ${convertedAmount / 100} ${currency}`
     );
 
-    doc.end();
-  } catch (err) {
-    console.error("❌ Invalid or expired hall ticket token:", err.message);
-    res.status(400).json({ message: "Invalid or expired hall ticket link" });
-  }
-});
+    // ✅ Create a short receipt (≤40 chars)
+    const shortReceipt = `ord_${userId.slice(-10)}_${Date.now()
+      .toString()
+      .slice(-5)}`;
 
+    // ✅ Create Razorpay order
+    const order = await razorpay.orders.create({
+      amount: convertedAmount,
+      currency,
+      receipt: shortReceipt,
+      notes: { userId, registrationId: registration._id.toString() },
+    });
+
+    // ✅ Save orderId in registration
+    registration.payment.orderId = order.id;
+    registration.payment.currency = currency;
+    registration.payment.convertedAmount=convertedAmount/100;
+    registration.payment.amountPaid = amountInINR; // store in currency unit
+    await registration.save();
+
+    res.json({
+      success: true,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      orderId: order.id,
+      amount: registration.payment.amountPaid,
+      convertedAmount:registration.payment.convertedAmount/100,
+      currency,
+      name: user.name,
+      email: user.email,
+      contact: user.mobileno,
+    });
+  } catch (err) {
+    console.error("Razorpay Order Error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const verifyRazorpayPayment = async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    // ✅ Validate input
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Missing payment verification fields" });
+    }
+
+    // 🔒 Verify signature
+    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
+    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+    const generatedSignature = hmac.digest("hex");
+
+    if (generatedSignature !== razorpay_signature) {
+      console.error("❌ Invalid Razorpay Signature");
+      return res.status(400).json({ success: false, message: "Payment verification failed" });
+    }
+
+    // 🔍 Find registration linked to this order
+    const registration = await Registration.findOne({ "payment.orderId": razorpay_order_id });
+    if (!registration) return res.status(404).json({ success: false, message: "Registration not found for this order" });
+
+    // ✅ Fetch user
+    const user = await User.findById(registration.userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    // ✅ Fetch or create AbstractStatus
+    let abstractStatus = await AbstractStatus.findOne({ userId: registration.userId });
+    if (!abstractStatus) {
+      abstractStatus = new AbstractStatus({
+        userId: registration.userId,
+        paymentStatus: "paid"
+      });
+    } else if (abstractStatus.paymentStatus === "paid") {
+      return res.status(400).json({ success: false, message: "Payment already completed" });
+    } else {
+      abstractStatus.paymentStatus = "paid";
+    }
+    await abstractStatus.save();
+
+    // ✅ Update registration payment info
+    registration.payment.paymentStatus = "paid";
+    registration.payment.paymentId = razorpay_payment_id;
+    registration.payment.paymentDate = new Date();
+    await registration.save();
+
+    // ✅ Update user payment status
+    user.paymentStatus = "paid";
+    await user.save();
+if(user.email){
+    // ✅ Send payment confirmation email
+    const subject = "💳 Payment Successful";
+    const message = `
+      Dear ${user.name},<br/><br/>
+      We’ve successfully received your payment for the <b>KSR IT Conference</b>.<br/><br/>
+      <b>Transaction ID:</b> ${razorpay_payment_id}<br/>
+      <b>Amount:</b> ${registration.payment.amountPaid} ${registration.payment.currency}<br/>
+      <b>Date:</b> ${new Date(registration.payment.paymentDate).toLocaleString()}<br/><br/>
+      Thank you for your registration! 🎉<br/>
+      You can now download your hall ticket once it becomes available.
+    `;
+
+    await sendEmail({
+      to: user.email,
+      subject,
+      html: emailTemplate(
+        subject,           // Title
+        message,           // Message
+        user.name,         // userName
+        user.email,        // userEmail
+        user.userId,       // userId
+        undefined,         // userAbstract
+        undefined,         // finalPaperStatus
+        "paid",            // paymentStatus
+        undefined,         // rejectedReason
+        undefined          // resetLink
+      ),
+    });
+}
+    console.log(`📧 Payment success email sent to: ${user.email}`);
+
+    return res.json({ success: true, message: "Payment verified successfully" });
+  } catch (error) {
+    console.error("❌ Razorpay Verification Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Optional: Complete payment (after verification)
+ */
+export const completePaymentController = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const registration = await Registration.findOne({ userId });
+    if (!registration) return res.status(404).json({ message: "Registration not found" });
+
+    registration.payment.paymentStatus = "paid";
+    registration.payment.paymentDate = new Date();
+    await registration.save();
+
+    await User.findByIdAndUpdate(userId, { paymentStatus: "paid" });
+    await AbstractStatus.findOneAndUpdate(
+      { userId },
+      { paymentStatus: "paid" },
+      { new: true, upsert: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment completed successfully. You can download your hall ticket now.",
+      registration,
+    });
+  } catch (err) {
+    console.error("❌ Complete Payment Error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
