@@ -1,5 +1,53 @@
 
 
+// import mongoose from "mongoose";
+// import bcrypt from "bcryptjs";
+
+// function generateUserId() {
+//   const randomNum = Math.floor(1000 + Math.random() * 9000);
+//   return `IC${randomNum}`;
+// }
+
+// const userSchema = mongoose.Schema(
+//   {
+//     name: { type: String, required: true },
+//     email: { type: String, required: true, unique: true },
+//     password: { type: String, required: true },
+//     mobilenocountrycode: { type: String, required: true }, // e.g., +91
+//     mobileno: { type: String, required: true, unique: true },
+//     country: { type: String, required: true, default: "India" },
+//     resetPasswordToken: String,
+//     resetPasswordExpire: Date,
+//     role: { type: String, default: "user" },
+//     userId: { type: String, unique: true, default: generateUserId },
+//     abstractStatus: {
+//       type: String,
+//       enum: ["No Abstract", "Under Review", "Approved", "Rejected"],
+//       default: "No Abstract",
+//     },
+//     paperStatus: { type: String, enum: ["No Paper", "Under Review","Correction","Approved", "Rejected"], default: "No Paper" },
+//     paymentStatus: { type: String, enum: ["unpaid", "paid"], default: "unpaid" },
+//   },
+//   { timestamps: true }
+// );
+
+// // Hash password before save
+// userSchema.pre("save", async function (next) {
+//   if (!this.isModified("password")) return next();
+//   const salt = await bcrypt.genSalt(10);
+//   this.password = await bcrypt.hash(this.password, salt);
+//   next();
+// });
+
+// // Compare password
+// userSchema.methods.matchPassword = async function (enteredPassword) {
+//   return await bcrypt.compare(enteredPassword, this.password);
+// };
+
+// const User = mongoose.model("User", userSchema);
+// export default User;
+
+
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
@@ -8,7 +56,7 @@ function generateUserId() {
   return `IC${randomNum}`;
 }
 
-const userSchema = mongoose.Schema(
+const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -16,17 +64,29 @@ const userSchema = mongoose.Schema(
     mobilenocountrycode: { type: String, required: true }, // e.g., +91
     mobileno: { type: String, required: true, unique: true },
     country: { type: String, required: true, default: "India" },
+
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+
     role: { type: String, default: "user" },
     userId: { type: String, unique: true, default: generateUserId },
+
+    // MATCHES AbstractStatus MODEL
     abstractStatus: {
       type: String,
-      enum: ["No Abstract", "Under Review", "Approved", "Rejected"],
-      default: "No Abstract",
+      enum: ["no abstract", "submitted", "approved", "rejected"],
+      default: "no abstract",
     },
-    paperStatus: { type: String, enum: ["No Paper", "Submitted","Correction","Approved", "Rejected"], default: "No Paper" },
-    paymentStatus: { type: String, enum: ["unpaid", "paid"], default: "unpaid" },
+    paperStatus: {
+      type: String,
+      enum: ["no paper", "submitted", "correction required", "approved", "rejected"],
+      default: "no paper",
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "paid"],
+      default: "unpaid",
+    },
   },
   { timestamps: true }
 );
