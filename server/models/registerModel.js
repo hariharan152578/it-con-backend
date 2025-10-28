@@ -46,7 +46,7 @@ const registerSchema = new mongoose.Schema(
     track: { type: String, required: true },
     presentationMode: {
       type: String,
-      enum: ["Online", "Offline"],
+      enum: ["online", "offline"],
       required: true,
     },
     abstractTitle: { type: String, required: true },

@@ -75,8 +75,8 @@ export const getAllUsers = asyncHandler(async (req, res) => {
         workflow: abstractStatus
           ? abstractStatus
           : {
-              abstractStatus: "No Abstract",
-              paperStatus: "No Paper",
+              abstractStatus: "no abstract",
+              paperStatus: "no paper",
               paymentStatus: "unpaid",
             },
       };
@@ -466,7 +466,7 @@ export const updateAbstractAndPaper = asyncHandler(async (req, res) => {
       ];
 
       if (normalizedStatus === "rejected") {
-        status.abstractrejectedReason = abstractrejectedReason || "Abstract Rejected";
+        status.abstractrejectedReason = abstractrejectedReason || "abstract rejected";
         status.paperStatus = "no paper";
         status.paymentStatus = "unpaid";
         commonUpdates.push(
@@ -536,7 +536,7 @@ export const updateAbstractAndPaper = asyncHandler(async (req, res) => {
       ];
 
       if (normalizedStatus === "rejected") {
-        status.paperrejectedReason = paperrejectedReason || "Paper Rejected";
+        status.paperrejectedReason = paperrejectedReason || "paper rejected";
         status.paymentStatus = "unpaid";
         status.discount = false;
         commonUpdates.push(
@@ -632,7 +632,7 @@ export const updateAbstractAndPaper = asyncHandler(async (req, res) => {
 
         const correctedUrl = saveFileLocally("corrected", file, `corrected_${userId}`);
         status.correctedPaperUrl = correctedUrl;
-        status.paperrejectedReason = paperrejectedReason || "Requires correction";
+        status.paperrejectedReason = paperrejectedReason || "requires correction";
         status.paymentStatus = "unpaid";
         status.correctionsRequested = (status.correctionsRequested || 0) + 1;
         status.discount = false;

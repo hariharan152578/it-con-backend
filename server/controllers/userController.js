@@ -239,7 +239,7 @@ export const registerUser = asyncHandler(async (req, res) => {
   }
 
   // ✅ Get country name
-  const countryName = countryCodeMap[mobilenocountrycode] || "Unknown";
+  const countryName = countryCodeMap[mobilenocountrycode] || "unknown";
 
   // ✅ Create user
   const user = await User.create({
@@ -405,12 +405,12 @@ export const getMe = asyncHandler(async (req, res) => {
     email: user.email,
     mobileno: user.mobileno,
     discount: abstractStatus ? abstractStatus.discount : false,
-    abstractStatus: registration ? user.abstractStatus : "No Abstract",
-    paperStatus: registration ? user.paperStatus : "No Paper",
-    paymentStatus: registration ? user.paymentStatus : "Unpaid",
+    abstractStatus: registration ? user.abstractStatus : "no abstract",
+    paperStatus: registration ? user.paperStatus : "no paper",
+    paymentStatus: registration ? user.paymentStatus : "unpaid",
     participants: registration ? registration.participants : [],
-    presentationMode: registration ? registration.presentationMode : "Not specified",
-    accommodation: registration ? registration.accommodation : "False",
+    presentationMode: registration ? registration.presentationMode : "not specified",
+    accommodation: registration ? registration.accommodation : "false",
     paymentProcess: registration?.payment || null,
   });
 });
