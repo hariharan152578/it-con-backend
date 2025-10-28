@@ -298,25 +298,22 @@ export const loginUser = asyncHandler(async (req, res) => {
   });
 });
 
-/* =====================================================
-   REQUEST PASSWORD OTP
-===================================================== */
 export const requestPasswordOtp = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ message: "User not found" });
 
-  // ✅ Generate 6-digit OTP
+  // Generate 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
 
-  // ✅ Set token + 1 minute expiry
+  // Set token + 1 minute expiry
   user.resetPasswordToken = otpHash;
-  user.resetPasswordExpire = Date.now() + 1 * 60 * 1000; // 1 minute
+  user.resetPasswordExpire = Date.now() + 1 * 60 * 1000;
   await user.save();
 
-  // ✅ Send OTP via email
+  // Send OTP via email
   await sendEmail({
     to: user.email,
     subject: "🔐 Your OTP Code",
@@ -326,7 +323,7 @@ export const requestPasswordOtp = asyncHandler(async (req, res) => {
        <p>Please use the following OTP to verify your action:</p>
        <h2 style="text-align:center;letter-spacing:3px;">${otp}</h2>
        <p>This OTP is valid for <b>1 minute</b>.</p>`,
-      user.name,
+           user.name,
       user.email,
       user.userId,
       undefined,
@@ -340,14 +337,15 @@ export const requestPasswordOtp = asyncHandler(async (req, res) => {
   res.json({ message: "OTP sent to email successfully" });
 });
 
+
 /* =====================================================
-   VERIFY OTP & RESET PASSWORD
+   2️⃣ VERIFY OTP
 ===================================================== */
 export const verifyOtp = asyncHandler(async (req, res) => {
-  const { email, otp, newPassword } = req.body;
+  const { email, otp } = req.body;
 
-  if (!email || !otp || !newPassword) {
-    return res.status(400).json({ message: "Email, OTP, and newPassword are required" });
+  if (!email || !otp) {
+    return res.status(400).json({ message: "Email and OTP are required" });
   }
 
   const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
@@ -356,16 +354,39 @@ export const verifyOtp = asyncHandler(async (req, res) => {
     email,
     resetPasswordToken: otpHash,
     resetPasswordExpire: { $gt: Date.now() },
+    // otpVerified: true,
   });
-
+  user.otpVerified=true;
+  await user.save();
   if (!user) return res.status(400).json({ message: "Invalid or expired OTP" });
 
-  user.password = newPassword;
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpire = undefined;
-  await user.save();
+  // OTP verified successfully
+  res.status(200).json({ message: "OTP verified successfully" });
+});
 
-  // ✅ Send confirmation email
+/* =====================================================
+   3️⃣ RESET PASSWORD (After OTP Verified)
+===================================================== */
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  if (!email || !newPassword) {
+    return res.status(400).json({ message: "Email and newPassword are required" });
+  }
+
+  const user = await User.findOne({ email });
+if (!user) return res.status(404).json({ message: "User not found" });
+
+if (!user.otpVerified)
+  return res.status(400).json({ message: "OTP not verified. Please verify first." });
+
+user.password = newPassword;
+user.resetPasswordToken = undefined;
+user.resetPasswordExpire = undefined;
+user.otpVerified = false; // clear verification state after success
+await user.save();
+
+  // Send confirmation email
   await sendEmail({
     to: user.email,
     subject: "Password Changed ✅",
@@ -410,8 +431,11 @@ export const getMe = asyncHandler(async (req, res) => {
     paymentStatus: registration ? user.paymentStatus : "unpaid",
     participants: registration ? registration.participants : [],
     presentationMode: registration ? registration.presentationMode : "not specified",
-    accommodation: registration ? registration.accommodation : "false",
+    accommodation: registration ? registration.accommodation : false,
     paymentProcess: registration?.payment || null,
+    userid:user.userId,
+    track:registration ? registration.track : "not specified",
+    paymentid:registration ? registration.payment.paymentId : null,
   });
 });
 

@@ -67,6 +67,7 @@ const userSchema = new mongoose.Schema(
 
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+    otpVerified: { type: Boolean, default: false },
 
     role: { type: String, default: "user" },
     userId: { type: String, unique: true, default: generateUserId },

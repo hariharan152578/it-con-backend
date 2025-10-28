@@ -53,7 +53,7 @@ const registerSchema = new mongoose.Schema(
     abstractContent: { type: String, required: true },
     abstractExpression: { type: String, required: true },
     paperUrl: { type: String },
-    accommodation: { type: Boolean,default:"false" },
+    accommodation: { type: Boolean,default:false },
     payment: { type: paymentSchema, default: {} },
   },
   { timestamps: true }
